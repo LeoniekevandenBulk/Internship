@@ -2,9 +2,10 @@ from datetime import timedelta
 import random
 import numpy as np
 from collections import defaultdict
+from sklearn import preprocessing
 
 # Create function for one hot encoding of categorical variables
-def one_hot_encoding(category_list, category, drop_column=False):
+def transform_to_one_hot_encoding(category_list, category, drop_column=False):
     if(drop_column):
         one_hot = [0] * (len(category_list) - 1)
         if(not(category_list.index(category) == 0)):
@@ -82,7 +83,7 @@ def list_trainseries_locations(trainseries,trainseries_locations_path):
 # Generate dataset to train on from realisation data
 def generate_dataset(realisation_path,connections_path,trainseries_locations_path,
                      trainseries,jump=False,change=False,regression=False,validation=False,
-                     normalization=True,drop_column_one_hot_encoding=False):
+                     normalization=True,one_hot_encoding=False):
     # Open file to read from
     realisation_data = open(realisation_path, "r")
 
@@ -91,6 +92,9 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
 
     # Initialize vector to save all current delays (needed if normalization is on)
     current_delay_array = []
+
+    # Initialize a label encoder in case one_hot_encoding is not used
+    le = preprocessing.LabelEncoder()
 
     print("Realisation data first iteration")
 
@@ -107,7 +111,10 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                 (len(series) == 7 and int(series[0:-1]) < 400000 and (5-len(str(trainseries)))*"0"+str(trainseries) == series[1:6])):
             date = columns[0]
             weekday = calculate_weekday(date)
-            day = one_hot_encoding([1,2,3,4,5],weekday,drop_column_one_hot_encoding)
+            if(one_hot_encoding):
+                day = transform_to_one_hot_encoding([1,2,3,4,5],weekday,False)
+            else:
+                day = weekday
             time = columns[6][11::]
             hour = int(time[0:2])
             minutes =  int(time[3:5])
@@ -120,7 +127,8 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
             else:
                 direction = -1
             location = columns[4]
-            location = one_hot_encoding(list_trainseries_locations(trainseries,trainseries_locations_path),location,drop_column_one_hot_encoding)
+            if (one_hot_encoding):
+                location = transform_to_one_hot_encoding(list_trainseries_locations(trainseries,trainseries_locations_path),location,False)
             future_delay = int(columns[8])
 
             # Check time difference to decide if the delay 20 minutes ago should come from the same train number
@@ -269,28 +277,28 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
         if(regression):
             dataset = open(
                 "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
-                "_regression_" + str(normalization) + "_" + str(drop_column_one_hot_encoding) + "_simple.txt", "w")
+                "_Category-Regression_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
         elif(change):
             dataset = open(
                 "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
-                "_change_" + str(normalization) + "_" + str(drop_column_one_hot_encoding) + "_simple.txt", "w")
+                "_Category-Change_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
         elif(jump):
             dataset = open(
                 "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
-                "_jump_" + str(normalization) + "_" + str(drop_column_one_hot_encoding) + "_simple.txt", "w")
+                "_Category-Jump_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
     else:
         if(regression):
             dataset = open(
                 "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + str(trainseries) +
-                "_regression_" + str(normalization) + "_" + str(drop_column_one_hot_encoding) + "_simple.txt", "w")
+                "_Category-Regression_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
         elif (change):
             dataset = open(
                 "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + str(trainseries) +
-                "_change_" + str(normalization) + "_" + str(drop_column_one_hot_encoding) + "_simple.txt", "w")
+                "_Category-Change_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
         elif (jump):
             dataset = open(
                 "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + str(trainseries) +
-                "_jump_" + str(normalization) + "_" + str(drop_column_one_hot_encoding) + "_simple.txt", "w")
+                "_Category-Jump_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
 
     # For all entries check if there is a intial delay, else add 0
     for nr in train_nr_entries:
@@ -312,6 +320,8 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
         mean = float(columns[0])
         std = float(columns[1])
         train_dataset.close()
+
+    dataset.write("Day,Hour,Minutes,Direction,Location,Same_train,Delay,Future_Delay \n")
 
     # Write all entries to the dataset file
     for nr in train_nr_entries:
@@ -341,10 +351,16 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
 
                 # Change the future delay to match the problem (classification/regression)
                 if(regression):
-                    dataset.write(
-                        str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                        + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
-                        + "," + str(delay) + "," + str(future_delay) + "\n")
+                    if(one_hot_encoding):
+                        dataset.write(
+                            str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
+                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
+                            + "," + str(delay) + "," + str(future_delay) + "\n")
+                    else:
+                        dataset.write(
+                            str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
+                            + "," + str(location) + "," + str(same_train)
+                            + "," + str(delay) + "," + str(future_delay) + "\n")
                 elif(change):
                     category_list = ["increase","equal","decrease"]
                     if(future_delay - delay > 1):
@@ -353,21 +369,38 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                         future_category = "decrease"
                     else:
                         future_category = "equal"
-                    future_category = one_hot_encoding(category_list,future_category,drop_column_one_hot_encoding)
-                    dataset.write(
-                        str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                        + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
-                        + "," + str(delay) + "," + str(future_category)[1:-1].replace(" ", "") + "\n")
+
+                    if(one_hot_encoding):
+                        future_category = transform_to_one_hot_encoding(category_list,future_category,False)
+                        dataset.write(
+                            str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
+                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
+                            + "," + str(delay) + "," + str(future_category)[1:-1].replace(" ", "") + "\n")
+                    else:
+                        le.fit(category_list)
+                        future_category = le.transform(np.array([future_category]))[0]
+                        dataset.write(
+                            str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
+                            + "," + str(location) + "," + str(same_train)
+                            + "," + str(delay) + "," + str(future_category)+ "\n")
                 elif(jump):
-                    category_list = ["YES", "NO"]
-                    if (abs(future_delay - delay) > 4):
+                    if(abs(future_delay - delay) > 4):
                         future_category = 1
                     else:
                         future_category = -1
-                    dataset.write(
-                        str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
-                        + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
-                        + "," + str(delay) + "," + str(future_category) + "\n")
+
+                    if(one_hot_encoding):
+                        dataset.write(
+                            str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
+                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
+                            + "," + str(delay) + "," + str(future_category) + "\n")
+                    else:
+                        le.fit([-1,1])
+                        future_category = le.transform(np.array([future_category]))[0]
+                        dataset.write(
+                            str(day) + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
+                            + "," + str(location) + "," + str(same_train)
+                            + "," + str(delay) + "," + str(future_category) + "\n")
                 else:
                     print("No choice was made in the parameters which form the output should have, please do so")
                     exit()
