@@ -71,7 +71,8 @@ def list_trainseries_locations(trainseries,trainseries_locations_path):
     for line in location_data:
         columns = line.split(":")
         series = columns[0]
-        if(str(trainseries) == series[0:len(str(trainseries))]):
+        if((str(trainseries) == series[0:-1]) or
+                (len(series) == 7 and int(series[0:-1]) < 400000 and (5-len(str(trainseries)))*"0"+str(trainseries) == series[1:6])):
             for loc in columns[1].split(","):
                 loc = loc.replace("\n","")
                 locations.append(loc)
@@ -93,8 +94,13 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
     # Initialize vector to save all current delays (needed if normalization is on)
     current_delay_array = []
 
-    # Initialize a label encoder in case one_hot_encoding is not used
-    le = preprocessing.LabelEncoder()
+    # Initialize label encoders in case one_hot_encoding is not used
+    output_encoder = preprocessing.LabelEncoder()
+    location_encoder = preprocessing.LabelEncoder()
+
+    # Initialize list of locations the trainseries passes
+    locations_list = list_trainseries_locations(trainseries, trainseries_locations_path)
+    location_encoder.fit(locations_list)
 
     print("Realisation data first iteration")
 
@@ -111,6 +117,7 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                 (len(series) == 7 and int(series[0:-1]) < 400000 and (5-len(str(trainseries)))*"0"+str(trainseries) == series[1:6])):
             date = columns[0]
             weekday = calculate_weekday(date)
+            # Transform day as it is a categorical variable
             if(one_hot_encoding):
                 day = transform_to_one_hot_encoding([1,2,3,4,5],weekday,False)
             else:
@@ -119,6 +126,7 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
             hour = int(time[0:2])
             minutes =  int(time[3:5])
             future_time = timedelta(hours=hour,minutes=minutes)
+            # Save the begin time of a train number to be able to say if 20 minutes back is the same train
             if(not(train_nr == previous_nr)):
                 begin_time = timedelta(hours=hour,minutes=minutes)
             direction = series[-1]
@@ -127,9 +135,20 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
             else:
                 direction = -1
             location = columns[4]
-            if (one_hot_encoding):
-                location = transform_to_one_hot_encoding(list_trainseries_locations(trainseries,trainseries_locations_path),location,False)
-            future_delay = int(columns[8])
+            # Transform location as it is a categorical variable
+            if(location in locations_list):
+                if (one_hot_encoding):
+                    location = transform_to_one_hot_encoding(locations_list,location,False)
+                else:
+                    location = location_encoder.transform(np.array([location]))[0]
+            # If location in validatation/test set did not occur in train set, give either all zeros for one hot, or just -1
+            else:
+                if (one_hot_encoding):
+                    location = [0] * len(locations_list)
+                else:
+                    location = -1
+
+            future_delay = float(columns[8])
 
             # Check time difference to decide if the delay 20 minutes ago should come from the same train number
             time_difference = (future_time - begin_time).__str__()
@@ -210,7 +229,7 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
         current_date = columns[0]
         current_series = columns[1]
         current_train_nr = int(columns[3])
-        current_delay = int(columns[8])
+        current_delay = float(columns[8])
 
         # If the current trainseries is the same as trainseries we are looking for
         if ((str(trainseries) == current_series[0:len(str(trainseries))]) or (
@@ -321,12 +340,12 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
         std = float(columns[1])
         train_dataset.close()
 
-    dataset.write("Day,Hour,Minutes,Direction,Location,Same_train,Delay,Future_Delay \n")
+    dataset.write("Day,Hour,Minutes,Direction,Location,Same_train,Delay,Future_Delay\n")
 
     # Write all entries to the dataset file
-    for nr in train_nr_entries:
+    for i,nr in enumerate(train_nr_entries):
         if(nr):
-            for entry in nr:
+            for j,entry in enumerate(nr):
                 train_nr = entry[0]
                 day = entry[3]
                 hour = entry[4]
@@ -355,12 +374,12 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                         dataset.write(
                             str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
                             + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
-                            + "," + str(delay) + "," + str(future_delay) + "\n")
+                            + "," + str(delay) + "," + str(future_delay))
                     else:
                         dataset.write(
                             str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
                             + "," + str(location) + "," + str(same_train)
-                            + "," + str(delay) + "," + str(future_delay) + "\n")
+                            + "," + str(delay) + "," + str(future_delay))
                 elif(change):
                     category_list = ["increase","equal","decrease"]
                     if(future_delay - delay > 1):
@@ -375,14 +394,14 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                         dataset.write(
                             str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
                             + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
-                            + "," + str(delay) + "," + str(future_category)[1:-1].replace(" ", "") + "\n")
+                            + "," + str(delay) + "," + str(future_category)[1:-1].replace(" ", ""))
                     else:
-                        le.fit(category_list)
-                        future_category = le.transform(np.array([future_category]))[0]
+                        output_encoder.fit(category_list)
+                        future_category = output_encoder.transform(np.array([future_category]))[0]
                         dataset.write(
                             str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
                             + "," + str(location) + "," + str(same_train)
-                            + "," + str(delay) + "," + str(future_category)+ "\n")
+                            + "," + str(delay) + "," + str(future_category))
                 elif(jump):
                     if(abs(future_delay - delay) > 4):
                         future_category = 1
@@ -393,17 +412,20 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                         dataset.write(
                             str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
                             + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
-                            + "," + str(delay) + "," + str(future_category) + "\n")
+                            + "," + str(delay) + "," + str(future_category))
                     else:
-                        le.fit([-1,1])
-                        future_category = le.transform(np.array([future_category]))[0]
+                        output_encoder.fit([-1,1])
+                        future_category = output_encoder.transform(np.array([future_category]))[0]
                         dataset.write(
                             str(day) + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
                             + "," + str(location) + "," + str(same_train)
-                            + "," + str(delay) + "," + str(future_category) + "\n")
+                            + "," + str(delay) + "," + str(future_category))
                 else:
                     print("No choice was made in the parameters which form the output should have, please do so")
                     exit()
+
+                if(not(i == len(train_nr_entries)-1 and j == len(nr)-1)):
+                    dataset.write("\n")
 
     # Close all files
     realisation_data.close()
