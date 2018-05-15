@@ -1,5 +1,4 @@
 from datetime import timedelta
-import random
 import numpy as np
 from collections import defaultdict
 from sklearn import preprocessing
@@ -406,7 +405,7 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                     if(abs(future_delay - delay) > 4):
                         future_category = 1
                     else:
-                        future_category = -1
+                        future_category = 0
 
                     if(one_hot_encoding):
                         dataset.write(
@@ -434,85 +433,3 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
 
 def generate_testset(testdata_path, trainseries):
     pass
-
-
-def get_databatch(dataset_path, batch_size=64, shuffle=True, augmentation=True, balance_batches=False):
-    # Calculate size of dataset and entries
-    data_file = open(dataset_path,"r")
-    data = []
-    count = 0
-    for count, line in enumerate(data_file):
-        data.append(line.split(','))
-        count += 1
-    data_file.close()
-    data_size = count+1
-    line_size = len(data[0])
-
-    # A generator loop for the creation of batches
-    while True:
-        # Shuffle the data
-        if(shuffle):
-            random.shuffle(data)
-
-        i = 0
-        while i < data_size:
-            entry_batch = np.zeros((batch_size, line_size-1), dtype=np.float32)
-            label_batch = np.zeros((batch_size, 1), dtype=np.uint8)
-            label_count = [0, 0]  # one element for delays of zero and one for the rest
-            j = 0
-            while j < batch_size:
-                # Get the position modula data_size to prevent bacth size not lining up with the dataset size
-                entry = data[i % data_size][0:-1]
-                label = data[i % data_size][-1]
-                i += 1
-                if(label > 0):
-                    label_category = 1
-                else:
-                    label_category = 0
-
-                if balance_batches and label_count[label_category] >= batch_size / 2:
-                    continue
-                label_count[label_category] += 1
-
-                # Augmentation by addding or subtracting one minute from the entries with a delay > 0
-                if(augmentation and label_category == 1):
-                    plus_one = random.uniform(0,1)
-                    minus_one = random.uniform(0,1)
-                    if(plus_one <= 0.25):
-                        entry[-1] += 1
-                    if(minus_one <= 0.25 and not(entry[-1] == 1)):
-                        entry[-1] += 1
-
-                entry_batch[j] = entry
-                label_batch[j] = label
-
-                j += 1
-
-            yield entry_batch, label_batch
-
-
-def get_testbatch(testset_path, batch_size=64):
-    # Calculate size of dataset and entries
-    data_file = open(testset_path, "r")
-    data = []
-    count = 0
-    for count, line in enumerate(data_file):
-        data.append(line.split(','))
-        count += 1
-    data_file.close()
-    data_size = count + 1
-    line_size = len(data[0])
-
-    # A generator loop for the creation of batches
-    while True:
-        i = 0
-        while i < data_size:
-            entry_batch = np.zeros((batch_size, line_size - 1), dtype=np.float32)
-            j = 0
-            for j in range(batch_size):
-                # Get the position modula data_size to prevent bacth size not lining up with the dataset size
-                entry = data[i % data_size]
-                entry_batch[j] = entry
-                i += 1
-
-            yield entry_batch
