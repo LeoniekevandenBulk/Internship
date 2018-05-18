@@ -12,8 +12,7 @@ def transform_to_one_hot_encoding(category_list, category, drop_column=False):
 
     else:
         one_hot = [0] * len(category_list)
-        if(not(category_list.index(category) == 0)):
-            one_hot[category_list.index(category)] = 1
+        one_hot[category_list.index(category)] = 1
 
     return one_hot
 
