@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-def get_databatch(data, batch_size=32, category='regression', shuffle=True, augmentation=True, balance_batches=False):
+def get_databatch(data, batch_size=32, category='Regression', shuffle=True, augmentation=True, balance_batches=False):
     # Set label length for category
     if(category=='Change'):
         label_length = 3
@@ -26,7 +26,11 @@ def get_databatch(data, batch_size=32, category='regression', shuffle=True, augm
             else:
                 label_batch = np.zeros((batch_size, label_length), dtype=np.uint8)
 
-            label_count = [0, 0]  # one element for delays of zero/equal/no_jump and one for the rest
+            if (category == 'Change'):
+                label_count = [0, 0, 0] # One element for each of the change categories: decrease, equal, increase
+            else:
+                label_count = [0, 0]  # One element for delays of zero(regression) or no_jump (jump) and one for delays of bigger than zero(regression) or jump (jump)
+
             j = 0
             while j < batch_size:
                 # Get the position modula data_size to prevent bacth size not lining up with the dataset size
@@ -40,28 +44,39 @@ def get_databatch(data, batch_size=32, category='regression', shuffle=True, augm
                     else:
                         label_category = 0
                 elif(category=='Change'):
-                    if(label[1] == 1):
+                    if(label[0] == 1):
                         label_category = 0
-                    else:
+                    elif(label[1] == 1):
                         label_category = 1
+                    else:
+                        label_category = 2
                 else:
                     if(label == 1):
                         label_category = 1
                     else:
                         label_category = 0
 
-                if balance_batches and label_count[label_category] >= batch_size / 2:
+                if balance_batches and label_count[label_category] >= batch_size / len(label_count):
                     continue
                 label_count[label_category] += 1
 
                 # Augmentation by addding or subtracting one minute from the entries with a delay > 0
-                if(augmentation and label_category == 1):
-                    plus_one = random.uniform(0,1)
-                    minus_one = random.uniform(0,1)
-                    if(plus_one <= 0.25):
-                        entry[-1] += 1
-                    if(minus_one <= 0.25 and not(entry[-1] == 1)):
-                        entry[-1] += 1
+                if (category == 'Change'):
+                    if(augmentation and (label_category == 0 or label_category == 2)):
+                        plus_one = random.uniform(0,1)
+                        minus_one = random.uniform(0,1)
+                        if(plus_one <= 0.25):
+                            entry[-1] += 1
+                        if(minus_one <= 0.25 and not(entry[-1] == 1)):
+                            entry[-1] -= 1
+                else:
+                    if(augmentation and label_category == 1):
+                        plus_one = random.uniform(0,1)
+                        minus_one = random.uniform(0,1)
+                        if(plus_one <= 0.25):
+                            entry[-1] += 1
+                        if(minus_one <= 0.25 and not(entry[-1] == 1)):
+                            entry[-1] -= 1
 
                 entry_batch[j] = entry
                 label_batch[j] = label

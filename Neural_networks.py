@@ -9,10 +9,11 @@ from keras.optimizers import Adam
 from keras.callbacks import CSVLogger, ModelCheckpoint, ReduceLROnPlateau
 from sklearn.metrics import fbeta_score, mean_squared_error
 from batch_generator import get_databatch, get_testbatch
+from matplotlib import pyplot
 
-def train_network(train_data, validation_data, category, batch_size, epochs):
+def train_network(train_data, validation_data, category, trainseries, batch_size, epochs, dataset_file):
     # Create Batch generators
-    train_generator = get_databatch(train_data, batch_size=batch_size, category=category, shuffle=True, augmentation=True,
+    train_generator = get_databatch(train_data, batch_size=batch_size, category=category, shuffle=True, augmentation=False,
                                     balance_batches=True)
     validation_generator = get_databatch(validation_data, batch_size=batch_size, category=category, shuffle=True, augmentation=False,
                                     balance_batches=True)
@@ -37,23 +38,48 @@ def train_network(train_data, validation_data, category, batch_size, epochs):
 
     # Create network architecture
     model = Sequential()
-    model.add(Dense(200, input_dim=input_dim, kernel_initializer='normal', activation='relu'))
-    model.add(Dense(100, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(200, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(100, kernel_initializer='he_normal', activation='relu'))
+    model.add(Dropout(0.2))
     model.add(Dense(output_dim, activation=last_activation))
-    model.compile(loss=loss,optimizer=Adam(),metrics=metrics)
+    model.compile(loss=loss,optimizer=Adam(lr=0.01),metrics=metrics)
 
     # Train network
     csv_logger = CSVLogger('C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\epoch_results.csv')
     lr_plateau = ReduceLROnPlateau(monitor='val_loss', patience=1, verbose=1, factor=0.5)
-    #checkpoint = ModelCheckpoint(
-        #filepath='C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\model.{epoch:02d}-{val_loss:.2f}.hdf5',
-        #verbose=1, save_best_only=True)
+    checkpoint = ModelCheckpoint(
+        filepath='C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\model.{epoch:02d}-{val_loss:.2f}.hdf5',
+        verbose=1, save_best_only=True)
 
-    model.fit_generator(train_generator, steps_per_epoch=len(train_data) / batch_size,
+    history = model.fit_generator(train_generator, steps_per_epoch=len(train_data) / batch_size,
                         epochs=epochs, verbose=2,
-                        callbacks=[csv_logger, lr_plateau],#, checkpoint],
+                        callbacks=[csv_logger, lr_plateau, checkpoint],
                         validation_data=validation_generator, validation_steps=len(validation_data)/batch_size)
 
+    # Determine path to save figures
+    save_path_figure = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork_Figures\\" + \
+                       dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\", "").replace(".csv", "")
+
+    if(not(category == 'Regression')):
+        # Plot accuracy
+        pyplot.plot(history.history['acc'])
+        pyplot.plot(history.history['val_acc'])
+        pyplot.title('Model accuracy')
+        pyplot.ylabel('Accuracy')
+        pyplot.xlabel('Epoch')
+        pyplot.legend(['train', 'test'], loc='upper left')
+        pyplot.savefig(save_path_figure + "-Accuracy.png")
+        pyplot.clf()
+
+    # Plot loss
+    pyplot.plot(history.history['loss'])
+    pyplot.plot(history.history['val_loss'])
+    pyplot.title('model loss')
+    pyplot.ylabel('loss')
+    pyplot.xlabel('epoch')
+    pyplot.legend(['train', 'test'], loc='upper left')
+    pyplot.savefig(save_path_figure + "-Loss.png")
 
 def validate_network(network_path, validation_data, category, batch_size):
     # Load model
@@ -110,7 +136,8 @@ def validate_network(network_path, validation_data, category, batch_size):
 if __name__ == "__main__":
     # Set important training parameters
     category = 'Change'
-    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset3000_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-Simple.csv"
+    trainseries = '3000'
+    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-Simple.csv"
     batch_size = 32
     epochs = 10
 
@@ -132,7 +159,7 @@ if __name__ == "__main__":
     ####################
 
     # Train network with the data
-    train_network(train_data, validation_data, category, batch_size, epochs)
+    train_network(train_data, validation_data, category, trainseries, batch_size, epochs, dataset_file)
 
     #########OR#########
 

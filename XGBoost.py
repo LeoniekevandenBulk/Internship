@@ -512,17 +512,17 @@ if __name__== "__main__":
 
     # Train/test
     #find_parameters_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, one_hot_encoding=False, sparse=False)
-    params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 4, 'min_child_weight': 3, 'reg_alpha': 0.01, 'scale_pos_weight': 1}
-    train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
+    params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01, 'scale_pos_weight': 1}
+    train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=False)
 
-    ##############
-    # Regression #
-    ##############
-    # Define file to train on for regression
-    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset3000_Category-Regression_Normalization-False_OneHotEncoding-False_Model-Simple.csv"
-    categorical_labels = ["Day", "Location"]
-
-    # Train/test
-    #find_parameters_regression_XGB(dataset_file, categorical_labels, one_hot_encoding=False, sparse=False)
-    params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 4, 'min_child_weight': 3, 'reg_alpha': 0.01}
-    train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
+    # ##############
+    # # Regression #
+    # ##############
+    # # Define file to train on for regression
+    # dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset3000_Category-Regression_Normalization-False_OneHotEncoding-False_Model-Simple.csv"
+    # categorical_labels = ["Day", "Location"]
+    #
+    # # Train/test
+    # #find_parameters_regression_XGB(dataset_file, categorical_labels, one_hot_encoding=False, sparse=False)
+    # params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01}
+    # train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
