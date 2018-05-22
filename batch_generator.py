@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-def get_databatch(data, batch_size=32, category='Regression', shuffle=True, augmentation=True, balance_batches=False):
+def get_databatch(data, mean, std, batch_size=32, category='Regression', shuffle=True, normalization=True, augmentation=True, balance_batches=False):
     # Set label length for category
     if(category=='Change'):
         label_length = 3
@@ -77,6 +77,12 @@ def get_databatch(data, batch_size=32, category='Regression', shuffle=True, augm
                             entry[-1] += 1
                         if(minus_one <= 0.25 and not(entry[-1] == 1)):
                             entry[-1] -= 1
+
+                # Add normalization on the fly as it otherwise interferes with the augmentation (assumes one-hot encoding)
+                if(normalization):
+                    entry[5] = entry[5]/23
+                    entry[6] = entry[6]/59
+                    entry[-1] = (entry[-1] - mean) / std
 
                 entry_batch[j] = entry
                 label_batch[j] = label

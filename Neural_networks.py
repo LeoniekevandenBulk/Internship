@@ -3,6 +3,7 @@ import csv
 import math
 import numpy as np
 import pandas as pd
+from keras import regularizers
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, BatchNormalization
 from keras.optimizers import Adam
@@ -11,12 +12,12 @@ from sklearn.metrics import fbeta_score, mean_squared_error
 from batch_generator import get_databatch, get_testbatch
 from matplotlib import pyplot
 
-def train_network(train_data, validation_data, category, trainseries, batch_size, epochs, dataset_file):
+def train_network(train_data, validation_data, category, batch_size, epochs, dataset_file, mean, std):
     # Create Batch generators
-    train_generator = get_databatch(train_data, batch_size=batch_size, category=category, shuffle=True, augmentation=False,
-                                    balance_batches=True)
-    validation_generator = get_databatch(validation_data, batch_size=batch_size, category=category, shuffle=True, augmentation=False,
-                                    balance_batches=True)
+    train_generator = get_databatch(train_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=True,
+                                    augmentation=True, balance_batches=True)
+    validation_generator = get_databatch(validation_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=True,
+                                         augmentation=True, balance_batches=True)
 
     # Depending on the category, set some of the model parameters differently
     if(category=='Regression'):
@@ -38,12 +39,12 @@ def train_network(train_data, validation_data, category, trainseries, batch_size
 
     # Create network architecture
     model = Sequential()
-    model.add(Dense(200, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-    model.add(Dropout(0.2))
-    model.add(Dense(100, kernel_initializer='he_normal', activation='relu'))
-    model.add(Dropout(0.2))
+    model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.5))
+    model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
     model.add(Dense(output_dim, activation=last_activation))
-    model.compile(loss=loss,optimizer=Adam(lr=0.01),metrics=metrics)
+    model.compile(loss=loss, optimizer=Adam(lr=0.01), metrics=metrics)
 
     # Train network
     csv_logger = CSVLogger('C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\epoch_results.csv')
@@ -81,13 +82,13 @@ def train_network(train_data, validation_data, category, trainseries, batch_size
     pyplot.legend(['train', 'test'], loc='upper left')
     pyplot.savefig(save_path_figure + "-Loss.png")
 
-def validate_network(network_path, validation_data, category, batch_size):
+def validate_network(network_path, validation_data, category, batch_size, mean, std):
     # Load model
     model = load_model(network_path)
 
     # Generator for predictions
-    prediction_generator = get_databatch(train_data, batch_size=batch_size, category=category, shuffle=False, augmentation=False,
-                                    balance_batches=False)
+    prediction_generator = get_databatch(train_data, mean, std, batch_size=batch_size, category=category, shuffle=False, normalization=True,
+                                         augmentation=False, balance_batches=False)
 
     # Predict labels for the validation data
     val_steps = int(np.ceil(float(len(validation_data)) / float(batch_size)))
@@ -139,7 +140,7 @@ if __name__ == "__main__":
     trainseries = '3000'
     dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-Simple.csv"
     batch_size = 32
-    epochs = 10
+    epochs = 20
 
     # Check if CSV already exists, else create csv from txt
     if(not(Path(dataset_file).is_file())):
@@ -156,15 +157,23 @@ if __name__ == "__main__":
     train_data = pd.read_csv(dataset_file, header=None, skiprows=2)
     validation_data = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"), header=None, skiprows=1)
 
+    # Load normalization parameters if necessary
+    dataset = open(dataset_file)
+    line = dataset.readline()
+    columns = line.split(":")[1].split(",")
+    mean = float(columns[0])
+    std = float(columns[1])
+    dataset.close()
+
     ####################
 
     # Train network with the data
-    train_network(train_data, validation_data, category, trainseries, batch_size, epochs, dataset_file)
+    train_network(train_data, validation_data, category, batch_size, epochs, dataset_file, mean, std)
 
     #########OR#########
 
     # # Validate network with data
     # network_path = ""
-    # validate_network(network_path, validation_data, category, batch_size)
+    # validate_network(network_path, validation_data, category, batch_size, mean, std)
 
     ###################

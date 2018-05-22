@@ -361,10 +361,10 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                     future_delay = 0
 
                 # Normalize current delay with standardization
-                if(normalization):
-                    hour = hour/23
-                    minutes = minutes/59
-                    delay = (delay - mean)/std
+                # if(normalization):
+                #     hour = hour/23
+                #     minutes = minutes/59
+                #     delay = (delay - mean)/std
 
                 # Change the future delay to match the problem (classification/regression)
                 if(regression):
@@ -421,9 +421,6 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                 else:
                     print("No choice was made in the parameters which form the output should have, please do so")
                     exit()
-
-                if(not(i == len(train_nr_entries)-1 and j == len(nr)-1)):
-                    dataset.write("\n")
 
     # Close all files
     realisation_data.close()
