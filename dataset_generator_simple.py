@@ -60,7 +60,7 @@ def calculate_weekday(date_in):
     return weekday
 
 # Return list of locations that a trainseries passes in his route
-def list_trainseries_locations(trainseries,trainseries_locations_path):
+def list_trainseries_locations(trainseries, trainseries_locations_path):
     # Open file to read from
     location_data = open(trainseries_locations_path,"r")
 
@@ -80,9 +80,8 @@ def list_trainseries_locations(trainseries,trainseries_locations_path):
 
 
 # Generate dataset to train on from realisation data
-def generate_dataset(realisation_path,connections_path,trainseries_locations_path,
-                     trainseries,jump=False,change=False,regression=False,validation=False,
-                     normalization=True,one_hot_encoding=False):
+def generate_dataset_simple(realisation_path, connections_path, trainseries_locations_path, trainseries, category,
+                            validation=False, normalization=True, one_hot_encoding=False):
     # Open file to read from
     realisation_data = open(realisation_path, "r")
 
@@ -289,34 +288,6 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
         previous_delay = current_delay
         previous_nr = current_train_nr
 
-    # Make file to write to
-    if(not validation):
-        if(regression):
-            dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
-                "_Category-Regression_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
-        elif(change):
-            dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
-                "_Category-Change_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
-        elif(jump):
-            dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
-                "_Category-Jump_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
-    else:
-        if(regression):
-            dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + str(trainseries) +
-                "_Category-Regression_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
-        elif (change):
-            dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + str(trainseries) +
-                "_Category-Change_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
-        elif (jump):
-            dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + str(trainseries) +
-                "_Category-Jump_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt", "w")
-
     # For all entries check if there is a intial delay, else add 0
     for nr in train_nr_entries:
         if(nr):
@@ -324,6 +295,17 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                 if(len(entry) == 12):
                     entry.append(0)
                     current_delay_array.append(0)
+
+    # Make file to write to
+    if(not validation):
+        file_name = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) + \
+                    "_Category-" + category + "_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt"
+        dataset = open(file_name, "w")
+
+    else:
+        file_name = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + str(trainseries) + \
+                    "_Category-" + category + "_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt"
+        dataset = open(file_name, "w")
 
     # Calculate parameters for the optional normalization and write them to file (needed for testing)
     if(normalization and not validation):
@@ -350,15 +332,15 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                 minutes = entry[5]
                 direction = entry[7]
                 location = entry[8]
-                future_delay = entry[9]
+                future_delay = float(entry[9])
                 same_train = entry[10]
-                delay = entry[12]
+                delay = float(entry[12])
 
                 # Ceil every delay under zero (so a train that is too early) to zero
                 if(delay < 0):
-                    delay = 0
+                    delay = 0.0
                 if(future_delay < 0):
-                    future_delay = 0
+                    future_delay = 0.0
 
                 # Normalize current delay with standardization
                 # if(normalization):
@@ -367,7 +349,7 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                 #     delay = (delay - mean)/std
 
                 # Change the future delay to match the problem (classification/regression)
-                if(regression):
+                if(category == 'Regression'):
                     if(one_hot_encoding):
                         dataset.write(
                             str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
@@ -378,7 +360,7 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                             str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
                             + "," + str(location) + "," + str(same_train)
                             + "," + str(delay) + "," + str(future_delay))
-                elif(change):
+                elif(category == 'Change'):
                     category_list = ["increase","equal","decrease"]
                     if(future_delay - delay > 1):
                         future_category = "increase"
@@ -400,7 +382,7 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                             str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
                             + "," + str(location) + "," + str(same_train)
                             + "," + str(delay) + "," + str(future_category))
-                elif(jump):
+                elif(category == 'Jump'):
                     if(abs(future_delay - delay) > 4):
                         future_category = 1
                     else:
@@ -421,6 +403,8 @@ def generate_dataset(realisation_path,connections_path,trainseries_locations_pat
                 else:
                     print("No choice was made in the parameters which form the output should have, please do so")
                     exit()
+
+                dataset.write("\n")
 
     # Close all files
     realisation_data.close()

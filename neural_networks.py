@@ -40,11 +40,10 @@ def train_network(train_data, validation_data, category, batch_size, epochs, dat
     # Create network architecture
     model = Sequential()
     model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-    model.add(BatchNormalization())
     model.add(Dropout(0.5))
     model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
     model.add(Dense(output_dim, activation=last_activation))
-    model.compile(loss=loss, optimizer=Adam(lr=0.01), metrics=metrics)
+    model.compile(loss=loss,optimizer=Adam(lr=0.01),metrics=metrics)
 
     # Train network
     csv_logger = CSVLogger('C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\epoch_results.csv')
@@ -140,7 +139,7 @@ if __name__ == "__main__":
     trainseries = '3000'
     dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-Simple.csv"
     batch_size = 32
-    epochs = 20
+    epochs = 40
 
     # Check if CSV already exists, else create csv from txt
     if(not(Path(dataset_file).is_file())):

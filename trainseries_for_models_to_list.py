@@ -13,7 +13,11 @@ for line in AnswerForm.readlines():
     trainseries = trainnumber[:-2] + "00"
     if(trainseries not in trainseries_list):
         trainseries_list.append(trainseries)
-        TrainseriesFile.write(trainseries + "\n")
+
+for i,series in enumerate(trainseries_list):
+    TrainseriesFile.write(series)
+    if( not (i == len(trainseries_list) - 1)):
+        TrainseriesFile.write(",")
 
 # Close file
 TrainseriesFile.close()
