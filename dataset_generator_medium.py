@@ -81,7 +81,7 @@ def list_trainseries_locations(trainseries, trainseries_locations_path):
 
 # Generate dataset to train on from realisation data
 def generate_dataset_medium(realisation_path, connections_path, trainseries_locations_path, composition_change_path,
-                            driver_change_path, trainseries, category, validation=False, normalization=True,
+                            driver_change_path, route_path, trainseries, category, validation=False, normalization=True,
                             one_hot_encoding=False):
     # Open file to read from
     realisation_data = open(realisation_path, "r")
@@ -101,6 +101,18 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
     # Initialize list of locations the trainseries passes
     locations_list = list_trainseries_locations(trainseries, trainseries_locations_path)
     location_encoder.fit(locations_list)
+
+    # Read route for this series
+    route_O = []
+    route_E = []
+    route_data = open(route_path, "r")
+    for route_line in route_data:
+        route_columns = route_line.split(":")
+        if(route_columns[0] == (str(trainseries) + "O")):
+            route_O = route_columns[1].strip("\n").split(",")
+        elif(route_columns[0] == (str(trainseries) + "E")):
+            route_E = route_columns[1].strip("\n").split(",")
+    route_data.close()
 
     print("Realisation data first iteration")
 
@@ -208,7 +220,8 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
 
     print("Fill delays that were not found in connections")
 
-    # For each train with same_train is -1 that was not found in the connection file, add zero as connection and zero as initial delay
+    # For each train with same_train is -1 that was not found in the connection file, add zero as connection and zero as initial delay, previous delay and second previous delay
+    # -1 can also be added for driver switch and composition change
     for nr in train_nr_entries:
         if(nr):
             for entry in nr:
@@ -220,20 +233,23 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     current_delay_array.append(0)
                     previous_delay_array.append(0)
                     previous_delay2_array.append(0)
+                    entry.append(-1)
+                    entry.append(-1)
 
     print("Realisation data second iteration")
 
     # Open realisation data again to look for the delay 20 minutes in the past
     realisation_data = open(realisation_path, "r")
-    previous_delay = {"delay": 0, "nr": 0}
-    previous_delay2 = {"delay": 0, "nr": 0}
-    previous_delay3 = {"delay": 0, "nr": 0}
+    previous_delay = {"delay": 0, "nr": 0, "loc":""}
+    previous_delay2 = {"delay": 0, "nr": 0, "loc":""}
+    previous_delay3 = {"delay": 0, "nr": 0, "loc":""}
     for line in realisation_data:
         line = line.replace('"', '')
         columns = line.split(",")
         current_date = columns[0]
         current_series = columns[1]
         current_train_nr = int(columns[3])
+        current_location = columns[4]
         current_delay = float(columns[8])
 
         # If the current trainseries is the same as trainseries we are looking for
@@ -247,6 +263,7 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     current_minutes = int(time[3:5])
                     current_time = timedelta(hours=current_hour, minutes=current_minutes)
                     future_time = entry[6]
+                    future_location = entry[8]
 
                     # If we crossed the time we are looking for by one entry
                     if(((future_time - timedelta(minutes=20)) < current_time) and (len(entry) == 12)):
@@ -269,6 +286,38 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             entry.append(0)
                             previous_delay2_array.append(0)
 
+                        # Determine if driver_switch is true
+                        driver_data = open(driver_change_path, "r")
+                        for driver_line in driver_data:
+                            driver_columns = driver_line.split(" ")
+                            if(current_train_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
+                                driver_location = driver_columns[4]
+                                if(entry[7] == 1):
+                                    route = route_E
+                                else:
+                                    route = route_O
+                                if(driver_location in route[route.index(previous_delay["loc"]):route.index(future_location)]):
+                                    entry.append(1)
+                        # If driver_switch was not found
+                        if(len(entry) == 15):
+                            entry.append(-1)
+
+                        # Determine if composition_change is true
+                        composition_data = open(composition_change_path, "r")
+                        for comp_line in composition_data:
+                            comp_columns = comp_line.split("\t")
+                            if(current_train_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
+                                composition_location = comp_columns[0]
+                                if(entry[7] == 1):
+                                    route = route_E
+                                else:
+                                    route = route_O
+                                if(composition_location in route[route.index(previous_delay["loc"]):route.index(future_location)]):
+                                    entry.append(1)
+                        # If composition_change was not found
+                        if(len(entry) == 16):
+                            entry.append(-1)
+
                     # If this is exactly 20 minutes back
                     elif(((future_time - timedelta(minutes=20)) == current_time) and (len(entry) == 12)):
                         # Add delay from 20 minutes back
@@ -290,6 +339,38 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             entry.append(0)
                             previous_delay2_array.append(0)
 
+                        # Determine if driver_switch is true
+                        driver_data = open(driver_change_path, "r")
+                        for driver_line in driver_data:
+                            driver_columns = driver_line.split(" ")
+                            if(current_train_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
+                                driver_location = driver_columns[4]
+                                if(entry[7] == 1):
+                                    route = route_E
+                                else:
+                                    route = route_O
+                                if(driver_location in route[route.index(current_location):route.index(future_location)]):
+                                    entry.append(1)
+                        # If driver_switch was not found
+                        if(len(entry) == 15):
+                            entry.append(-1)
+
+                        # Determine if composition_change is true
+                        composition_data = open(composition_change_path, "r")
+                        for comp_line in composition_data:
+                            comp_columns = comp_line.split("\t")
+                            if(current_train_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
+                                composition_location = comp_columns[0]
+                                if(entry[7] == 1):
+                                    route = route_E
+                                else:
+                                    route = route_O
+                                if(composition_location in route[route.index(current_location):route.index(future_location)]):
+                                    entry.append(1)
+                        # If composition_change was not found
+                        if(len(entry) == 16):
+                            entry.append(-1)
+
         # If the current trainseries is the a connection of the trainnumber we are looking for
         elif(current_train_nr in train_cons.keys()):
             for entry in train_nr_entries[train_cons[current_train_nr] % 100]:
@@ -301,6 +382,8 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     current_minutes = int(time[3:5])
                     current_time = timedelta(hours=current_hour, minutes=current_minutes)
                     future_time = entry[6]
+                    future_location = entry[8]
+                    future_nr = entry[0]
 
                     # If we crossed the time we are looking for by one entry
                     if (((future_time - timedelta(minutes=20)) < current_time) and (len(entry) == 12)):
@@ -323,6 +406,38 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             entry.append(0)
                             previous_delay2_array.append(0)
 
+                        # Determine if driver_switch is true
+                        driver_data = open(driver_change_path, "r")
+                        for driver_line in driver_data:
+                            driver_columns = driver_line.split(" ")
+                            if(future_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
+                                driver_location = driver_columns[4]
+                                if(entry[7] == 1):
+                                    route = route_E
+                                else:
+                                    route = route_O
+                                if(driver_location in route[:route.index(future_location)]):
+                                    entry.append(1)
+                        # If driver_switch was not found
+                        if(len(entry) == 15):
+                            entry.append(-1)
+
+                        # Determine if composition_change is true
+                        composition_data = open(composition_change_path, "r")
+                        for comp_line in composition_data:
+                            comp_columns = comp_line.split("\t")
+                            if(future_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
+                                composition_location = comp_columns[0]
+                                if(entry[7] == 1):
+                                    route = route_E
+                                else:
+                                    route = route_O
+                                if(composition_location in route[:route.index(future_location)]):
+                                    entry.append(1)
+                        # If composition_change was not found
+                        if(len(entry) == 16):
+                            entry.append(-1)
+
                     # If this is exactly 20 minutes back
                     elif (((future_time - timedelta(minutes=20)) == current_time) and (len(entry) == 12)):
                         # Add delay from 20 minutes back
@@ -344,10 +459,45 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             entry.append(0)
                             previous_delay2_array.append(0)
 
+                        # Determine if driver_switch is true
+                        driver_data = open(driver_change_path, "r")
+                        for driver_line in driver_data:
+                            driver_columns = driver_line.split(" ")
+                            if(future_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
+                                driver_location = driver_columns[4]
+                                if(entry[7] == 1):
+                                    route = route_E
+                                else:
+                                    route = route_O
+                                if(driver_location in route[:route.index(future_location)]):
+                                    entry.append(1)
+                        # If driver_switch was not found
+                        if(len(entry) == 15):
+                            entry.append(-1)
+
+                        # Determine if composition_change is true
+                        composition_data = open(composition_change_path, "r")
+                        for comp_line in composition_data:
+                            comp_columns = comp_line.split("\t")
+                            if(future_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
+                                composition_location = comp_columns[0]
+                                if(entry[7] == 1):
+                                    route = route_E
+                                else:
+                                    route = route_O
+                                if(composition_location in route[:route.index(future_location)]):
+                                    entry.append(1)
+                        # If composition_change was not found
+                        if(len(entry) == 16):
+                            entry.append(-1)
+
         # If the previous number was the connection of the trainnumber but the last data was more than 20 minutes back
         elif(previous_nr in train_cons.keys() and not(previous_nr == current_train_nr)):
             for entry in train_nr_entries[train_cons[previous_nr] % 100]:
                 if (current_date == entry[1] and entry[10] == -1 and entry[11] == previous_nr and len(entry) == 12):
+                    future_location = entry[8]
+                    future_nr = entry[0]
+
                     # Add delay from 20 minutes back
                     delay = previous_delay["delay"]
                     entry.append(delay)
@@ -367,13 +517,46 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                         entry.append(0)
                         previous_delay2_array.append(0)
 
+                    # Determine if driver_switch is true
+                    driver_data = open(driver_change_path, "r")
+                    for driver_line in driver_data:
+                        driver_columns = driver_line.split(" ")
+                        if (future_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
+                            driver_location = driver_columns[4]
+                            if (entry[7] == 1):
+                                route = route_E
+                            else:
+                                route = route_O
+                            if (driver_location in route[:route.index(future_location)]):
+                                entry.append(1)
+                    # If driver_switch was not found
+                    if (len(entry) == 15):
+                        entry.append(-1)
+
+                    # Determine if composition_change is true
+                    composition_data = open(composition_change_path, "r")
+                    for comp_line in composition_data:
+                        comp_columns = comp_line.split("\t")
+                        if (future_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
+                            composition_location = comp_columns[0]
+                            if (entry[7] == 1):
+                                route = route_E
+                            else:
+                                route = route_O
+                            if (composition_location in route[:route.index(future_location)]):
+                                entry.append(1)
+                    # If composition_change was not found
+                    if (len(entry) == 16):
+                        entry.append(-1)
+
         # Remember the previous delay and number
         previous_delay3 = previous_delay2
         previous_delay2 = previous_delay
-        previous_delay = {"delay":current_delay,"nr":current_train_nr}
+        previous_delay = {"delay":current_delay,"nr":current_train_nr, "loc":current_location}
         previous_nr = current_train_nr
 
-    # For all entries check if there is a intial delay, else add 0
+    # For all entries check if there is a intial delay, else add 0 for initial, previous and second previous delay
+    # 0 can also be added for driver switch and composition change
     for nr in train_nr_entries:
         if(nr):
             for entry in nr:
@@ -384,6 +567,8 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     current_delay_array.append(0)
                     previous_delay_array.append(0)
                     previous_delay2_array.append(0)
+                    entry.append(-1)
+                    entry.append(-1)
 
     # Make file to write to
     if(not validation):
@@ -414,7 +599,7 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         std = float(columns[1])
         train_dataset.close()
 
-    dataset.write("Day,Hour,Minutes,Direction,Location,Same_train,Previous_delay2,Previous_delay,Delay,Future_Delay\n")
+    dataset.write("Day,Hour,Minutes,Direction,Location,Same_train,Driver_switch,Composition_change,Previous_delay2,Previous_delay,Delay,Future_Delay\n")
 
     # Write all entries to the dataset file
     print(len(train_nr_entries))
@@ -432,6 +617,8 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                 delay = float(entry[12])
                 previous_delay = float(entry[13])
                 previous_delay2 = float(entry[14])
+                driver_switch = entry[15]
+                composition_change = entry[16]
 
                 # Ceil every delay under zero (so a train that is too early) to zero
                 if(delay < 0):
@@ -454,12 +641,14 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     if(one_hot_encoding):
                         dataset.write(
                             str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(previous_delay2)
-                            + "," + str(previous_delay) + "," + str(delay) + "," + str(future_delay))
+                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch)
+                            + "," + str(composition_change) + "," + str(previous_delay2) + "," + str(previous_delay) +
+                            "," + str(delay) + "," + str(future_delay))
                     else:
                         dataset.write(
                             str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                            + "," + str(location) + "," + str(same_train) + "," + str(previous_delay2)
+                            + "," + str(location) + "," + str(same_train) + "," + str(driver_switch)
+                            + "," + str(composition_change) + "," +  str(previous_delay2)
                             + "," + str(previous_delay) + "," + str(delay) + "," + str(future_delay))
                 elif(category == 'Change'):
                     category_list = ["increase","equal","decrease"]
@@ -474,14 +663,16 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                         future_category = transform_to_one_hot_encoding(category_list,future_category,False)
                         dataset.write(
                             str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(previous_delay2)
-                            + "," + str(previous_delay) + "," + str(delay) + "," + str(future_category)[1:-1].replace(" ", ""))
+                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch)
+                            + "," + str(composition_change) + "," +  str(previous_delay2) + "," + str(previous_delay) +
+                            "," + str(delay) + "," + str(future_category)[1:-1].replace(" ", ""))
                     else:
                         output_encoder.fit(category_list)
                         future_category = output_encoder.transform(np.array([future_category]))[0]
                         dataset.write(
                             str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                            + "," + str(location) + "," + str(same_train) + "," + str(previous_delay2)
+                            + "," + str(location) + "," + str(same_train)+ "," + str(driver_switch)
+                            + "," + str(composition_change) + "," + str(previous_delay2)
                             + "," + str(previous_delay) + "," + str(delay) + "," + str(future_category))
                 elif(category == 'Jump'):
                     if(abs(future_delay - delay) > 4):
@@ -492,14 +683,16 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     if(one_hot_encoding):
                         dataset.write(
                             str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
-                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(previous_delay2)
-                            + "," + str(previous_delay) + "," + str(delay) + "," + str(future_category))
+                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch)
+                            + "," + str(composition_change) + "," +  str(previous_delay2) + "," + str(previous_delay) +
+                            "," + str(delay) + "," + str(future_category))
                     else:
                         output_encoder.fit([-1,1])
                         future_category = output_encoder.transform(np.array([future_category]))[0]
                         dataset.write(
                             str(day) + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
-                            + "," + str(location) + "," + str(same_train) + "," + str(previous_delay2)
+                            + "," + str(location) + "," + str(same_train) + "," + str(driver_switch)
+                            + "," + str(composition_change) + "," + str(previous_delay2)
                             + "," + str(previous_delay) + "," + str(delay) + "," + str(future_category))
                 else:
                     print("No choice was made in the parameters which form the output should have, please do so")
