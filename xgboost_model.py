@@ -4,7 +4,6 @@ import math
 from pathlib import Path
 import pandas as pd
 import numpy as np
-import xgboost as xgb
 from xgboost import XGBClassifier, XGBRegressor, plot_importance, plot_tree
 from sklearn import metrics
 from sklearn.model_selection import GridSearchCV
@@ -215,15 +214,16 @@ def train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, param
     # Fit best model
     best_xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric=["merror","mlogloss"],early_stopping_rounds=30)
 
+    # Predict on validation set and print accuracy
+    predictions = best_xgb.predict(validation_features)
+    accuracy = metrics.accuracy_score(validation_labels, predictions)
+    print("Accuracy: %.4g" % accuracy)
+
     # Pickle and save best model and training figures
     save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + \
                 dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
-                + ".pkl"
+                + str(accuracy) + ".pkl"
     pickle.dump(best_xgb,open(save_path_model,"wb"))
-
-    # Predict on validation set and print accuracy
-    predictions = best_xgb.predict(validation_features)
-    print("Accuracy: %.4g" % metrics.accuracy_score(validation_labels, predictions))
 
     if(save_figures):
         # Determine path to save figures
@@ -234,12 +234,12 @@ def train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, param
         plot_importance(best_xgb)
         pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
 
-        # Plot final decision tree
-        for i in range (0,10):
-            plot_tree(best_xgb, num_trees=i)
-            fig = pyplot.gcf()
-            fig.set_size_inches(150, 100)
-            fig.savefig(save_path_figure + "-DecisionTree" + str(i+1) + ".png")
+        # # Plot final decision tree
+        # for i in range (0,10):
+        #     plot_tree(best_xgb, num_trees=i)
+        #     fig = pyplot.gcf()
+        #     fig.set_size_inches(150, 100)
+        #     fig.savefig(save_path_figure + "-DecisionTree" + str(i+1) + ".png")
 
         # Plot learning curves
         results = best_xgb.evals_result()
@@ -461,15 +461,16 @@ def train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encod
     # Fit best model
     best_xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric="rmse",early_stopping_rounds=30)
 
+    # Predict on validation set and print accuracy
+    predictions = best_xgb.predict(validation_features)
+    rmse = math.sqrt(metrics.mean_squared_error(validation_labels.values, predictions))
+    print("Root Mean squared error: %.4g" % rmse)
+
     # Pickle and save best model and training figures
     save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + \
                 dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
-                + ".pkl"
+                + str(rmse) + ".pkl"
     pickle.dump(best_xgb,open(save_path_model,"wb"))
-
-    # Predict on validation set and print accuracy
-    predictions = best_xgb.predict(validation_features)
-    print("Root Mean squared error: %.4g" % math.sqrt(metrics.mean_squared_error(validation_labels.values, predictions)))
 
     if(save_figures):
         # Determine path to save figures
@@ -480,12 +481,12 @@ def train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encod
         plot_importance(best_xgb)
         pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
 
-        # Plot final decision tree
-        for i in range (0,10):
-            plot_tree(best_xgb, num_trees=i)
-            fig = pyplot.gcf()
-            fig.set_size_inches(150, 100)
-            fig.savefig(save_path_figure + "-DecisionTree" + str(i+1) + ".png")
+        # # Plot final decision tree
+        # for i in range (0,10):
+        #     plot_tree(best_xgb, num_trees=i)
+        #     fig = pyplot.gcf()
+        #     fig.set_size_inches(150, 100)
+        #     fig.savefig(save_path_figure + "-DecisionTree" + str(i+1) + ".png")
 
         # Plot learning curves
         results = best_xgb.evals_result()
@@ -502,27 +503,31 @@ def train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encod
 
 
 if __name__== "__main__":
+    # Set parameters
+    trainseries = '3000'
+    dataset_type = 'Medium'
+
     ###############
     # Categorical #
     ###############
     # Define file to train on and amount of classes of the dataset here
-    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset3000_Category-Change_Normalization-False_OneHotEncoding-False_Model-Simple.csv"
+    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-Change_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
     nr_of_classes = 3
     categorical_labels = ["Day", "Location"]
 
     # Train/test
     #find_parameters_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, one_hot_encoding=False, sparse=False)
     params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01, 'scale_pos_weight': 1}
-    train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=False)
+    train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
 
-    # ##############
-    # # Regression #
-    # ##############
-    # # Define file to train on for regression
-    # dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset3000_Category-Regression_Normalization-False_OneHotEncoding-False_Model-Simple.csv"
-    # categorical_labels = ["Day", "Location"]
-    #
-    # # Train/test
-    # #find_parameters_regression_XGB(dataset_file, categorical_labels, one_hot_encoding=False, sparse=False)
-    # params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01}
-    # train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
+    ##############
+    # Regression #
+    ##############
+    # Define file to train on for regression
+    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-Regression_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
+    categorical_labels = ["Day", "Location"]
+
+    # Train/test
+    #find_parameters_regression_XGB(dataset_file, categorical_labels, one_hot_encoding=False, sparse=False)
+    params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01}
+    train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)

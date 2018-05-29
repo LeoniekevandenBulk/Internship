@@ -6,7 +6,7 @@ import pandas as pd
 from keras import regularizers
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, BatchNormalization
-from keras.optimizers import Adam, SGD
+from keras.optimizers import Adam
 from keras.callbacks import CSVLogger, ModelCheckpoint, ReduceLROnPlateau
 from sklearn.metrics import fbeta_score, mean_squared_error
 from batch_generator import get_databatch, get_testbatch
@@ -14,16 +14,10 @@ from matplotlib import pyplot
 
 def train_network(train_data, validation_data, category, batch_size, epochs, dataset_file, mean, std):
     # Create Batch generators
-    train_generator = get_databatch(train_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=False,
-                                    augmentation=False, balance_batches=False)
-    validation_generator = get_databatch(validation_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=False,
-                                         augmentation=False, balance_batches=False)
-
-    # Determine path to save logger files, models and figures
-    csv_logger_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\epoch_results.csv"
-    save_model_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\model.{epoch:02d}-{val_loss:.2f}.hdf5"
-    save_figure_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork_Figures\\" + category + \
-                       "\\" + dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\", "").replace(".csv", "")
+    train_generator = get_databatch(train_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=True,
+                                    augmentation=True, balance_batches=True)
+    validation_generator = get_databatch(validation_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=True,
+                                         augmentation=True, balance_batches=True)
 
     # Depending on the category, set some of the model parameters differently
     if(category=='Regression'):
@@ -44,31 +38,28 @@ def train_network(train_data, validation_data, category, batch_size, epochs, dat
     input_dim = train_data.shape[1]-output_dim
 
     # Create network architecture
-    if(category=='Change' or category=='Jump'):
-        model = Sequential()
-        model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dropout(0.5))
-        model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dense(output_dim, activation=last_activation))
-        model.compile(loss=loss,optimizer=Adam(lr=0.01),metrics=metrics)
-    else:
-        model = Sequential()
-        model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dense(output_dim, activation=last_activation))
-        model.compile(loss=loss, optimizer=Adam(lr=0.01), metrics=metrics)
+    model = Sequential()
+    model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
+    model.add(Dense(output_dim, activation=last_activation))
+    model.compile(loss=loss,optimizer=Adam(lr=0.01),metrics=metrics)
 
     # Train network
-    csv_logger = CSVLogger(csv_logger_path)
+    csv_logger = CSVLogger('C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\epoch_results.csv')
     lr_plateau = ReduceLROnPlateau(monitor='val_loss', patience=1, verbose=1, factor=0.5)
     checkpoint = ModelCheckpoint(
-        filepath=save_model_path,
+        filepath='C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\model.{epoch:02d}-{val_loss:.2f}.hdf5',
         verbose=1, save_best_only=True)
 
     history = model.fit_generator(train_generator, steps_per_epoch=len(train_data) / batch_size,
                         epochs=epochs, verbose=2,
                         callbacks=[csv_logger, lr_plateau, checkpoint],
                         validation_data=validation_generator, validation_steps=len(validation_data)/batch_size)
+
+    # Determine path to save figures
+    save_path_figure = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork_Figures\\" + \
+                       dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\", "").replace(".csv", "")
 
     if(not(category == 'Regression')):
         # Plot accuracy
@@ -78,7 +69,7 @@ def train_network(train_data, validation_data, category, batch_size, epochs, dat
         pyplot.ylabel('Accuracy')
         pyplot.xlabel('Epoch')
         pyplot.legend(['train', 'test'], loc='upper left')
-        pyplot.savefig(save_figure_path + "-Accuracy.png")
+        pyplot.savefig(save_path_figure + "-Accuracy.png")
         pyplot.clf()
 
     # Plot loss
@@ -88,7 +79,7 @@ def train_network(train_data, validation_data, category, batch_size, epochs, dat
     pyplot.ylabel('loss')
     pyplot.xlabel('epoch')
     pyplot.legend(['train', 'test'], loc='upper left')
-    pyplot.savefig(save_figure_path + "-Loss.png")
+    pyplot.savefig(save_path_figure + "-Loss.png")
 
 def validate_network(network_path, validation_data, category, batch_size, mean, std):
     # Load model
@@ -144,11 +135,11 @@ def validate_network(network_path, validation_data, category, batch_size, mean, 
 
 if __name__ == "__main__":
     # Set important training parameters
-    category = 'Regression'
+    category = 'Change'
     trainseries = '3000'
-    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-Simple.csv"
+    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets_oud\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-Simple.csv"
     batch_size = 32
-    epochs = 20
+    epochs = 40
 
     # Check if CSV already exists, else create csv from txt
     if(not(Path(dataset_file).is_file())):

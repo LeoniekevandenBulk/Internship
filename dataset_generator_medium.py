@@ -147,19 +147,6 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
             else:
                 direction = -1
             location = columns[4]
-            # Transform location as it is a categorical variable
-            if(location in locations_list):
-                if (one_hot_encoding):
-                    location = transform_to_one_hot_encoding(locations_list,location,False)
-                else:
-                    location = location_encoder.transform(np.array([location]))[0]
-            # If location in validatation/test set did not occur in train set, give either all zeros for one hot, or just -1
-            else:
-                if (one_hot_encoding):
-                    location = [0] * len(locations_list)
-                else:
-                    location = -1
-
             future_delay = float(columns[8])
 
             # Check time difference to decide if the delay 20 minutes ago should come from the same train number
@@ -220,13 +207,15 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
 
     print("Fill delays that were not found in connections")
 
-    # For each train with same_train is -1 that was not found in the connection file, add zero as connection and zero as initial delay, previous delay and second previous delay
-    # -1 can also be added for driver switch and composition change
+    # For each train with same_train is -1 that was not found in the connection file, add zero as connection and zero
+    # as initial location and delay, previous delay and second previous delay. -1 can also be added for driver switch
+    # and composition change
     for nr in train_nr_entries:
         if(nr):
             for entry in nr:
                 if(not(len(entry) == 12)):
                     entry.append(0)
+                    entry.append("Unknown")
                     entry.append(0)
                     entry.append(0)
                     entry.append(0)
@@ -267,6 +256,8 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
 
                     # If we crossed the time we are looking for by one entry
                     if(((future_time - timedelta(minutes=20)) < current_time) and (len(entry) == 12)):
+                        # Add current location
+                        entry.append(previous_delay["loc"])
                         # Add delay from 20 minutes back
                         delay = previous_delay["delay"]
                         entry.append(delay)
@@ -286,40 +277,10 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             entry.append(0)
                             previous_delay2_array.append(0)
 
-                        # Determine if driver_switch is true
-                        driver_data = open(driver_change_path, "r")
-                        for driver_line in driver_data:
-                            driver_columns = driver_line.split(" ")
-                            if(current_train_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
-                                driver_location = driver_columns[4]
-                                if(entry[7] == 1):
-                                    route = route_E
-                                else:
-                                    route = route_O
-                                if(driver_location in route[route.index(previous_delay["loc"]):route.index(future_location)]):
-                                    entry.append(1)
-                        # If driver_switch was not found
-                        if(len(entry) == 15):
-                            entry.append(-1)
-
-                        # Determine if composition_change is true
-                        composition_data = open(composition_change_path, "r")
-                        for comp_line in composition_data:
-                            comp_columns = comp_line.split("\t")
-                            if(current_train_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
-                                composition_location = comp_columns[0]
-                                if(entry[7] == 1):
-                                    route = route_E
-                                else:
-                                    route = route_O
-                                if(composition_location in route[route.index(previous_delay["loc"]):route.index(future_location)]):
-                                    entry.append(1)
-                        # If composition_change was not found
-                        if(len(entry) == 16):
-                            entry.append(-1)
-
                     # If this is exactly 20 minutes back
                     elif(((future_time - timedelta(minutes=20)) == current_time) and (len(entry) == 12)):
+                        # Add current location
+                        entry.append(current_location)
                         # Add delay from 20 minutes back
                         delay = current_delay
                         entry.append(delay)
@@ -339,38 +300,6 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             entry.append(0)
                             previous_delay2_array.append(0)
 
-                        # Determine if driver_switch is true
-                        driver_data = open(driver_change_path, "r")
-                        for driver_line in driver_data:
-                            driver_columns = driver_line.split(" ")
-                            if(current_train_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
-                                driver_location = driver_columns[4]
-                                if(entry[7] == 1):
-                                    route = route_E
-                                else:
-                                    route = route_O
-                                if(driver_location in route[route.index(current_location):route.index(future_location)]):
-                                    entry.append(1)
-                        # If driver_switch was not found
-                        if(len(entry) == 15):
-                            entry.append(-1)
-
-                        # Determine if composition_change is true
-                        composition_data = open(composition_change_path, "r")
-                        for comp_line in composition_data:
-                            comp_columns = comp_line.split("\t")
-                            if(current_train_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
-                                composition_location = comp_columns[0]
-                                if(entry[7] == 1):
-                                    route = route_E
-                                else:
-                                    route = route_O
-                                if(composition_location in route[route.index(current_location):route.index(future_location)]):
-                                    entry.append(1)
-                        # If composition_change was not found
-                        if(len(entry) == 16):
-                            entry.append(-1)
-
         # If the current trainseries is the a connection of the trainnumber we are looking for
         elif(current_train_nr in train_cons.keys()):
             for entry in train_nr_entries[train_cons[current_train_nr] % 100]:
@@ -387,6 +316,8 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
 
                     # If we crossed the time we are looking for by one entry
                     if (((future_time - timedelta(minutes=20)) < current_time) and (len(entry) == 12)):
+                        # Add current location
+                        entry.append(previous_delay["loc"])
                         # Add delay from 20 minutes back
                         delay = previous_delay["delay"]
                         entry.append(delay)
@@ -406,40 +337,10 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             entry.append(0)
                             previous_delay2_array.append(0)
 
-                        # Determine if driver_switch is true
-                        driver_data = open(driver_change_path, "r")
-                        for driver_line in driver_data:
-                            driver_columns = driver_line.split(" ")
-                            if(future_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
-                                driver_location = driver_columns[4]
-                                if(entry[7] == 1):
-                                    route = route_E
-                                else:
-                                    route = route_O
-                                if(driver_location in route[:route.index(future_location)]):
-                                    entry.append(1)
-                        # If driver_switch was not found
-                        if(len(entry) == 15):
-                            entry.append(-1)
-
-                        # Determine if composition_change is true
-                        composition_data = open(composition_change_path, "r")
-                        for comp_line in composition_data:
-                            comp_columns = comp_line.split("\t")
-                            if(future_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
-                                composition_location = comp_columns[0]
-                                if(entry[7] == 1):
-                                    route = route_E
-                                else:
-                                    route = route_O
-                                if(composition_location in route[:route.index(future_location)]):
-                                    entry.append(1)
-                        # If composition_change was not found
-                        if(len(entry) == 16):
-                            entry.append(-1)
-
                     # If this is exactly 20 minutes back
                     elif (((future_time - timedelta(minutes=20)) == current_time) and (len(entry) == 12)):
+                        # Add current location
+                        entry.append(current_location)
                         # Add delay from 20 minutes back
                         delay = current_delay
                         entry.append(delay)
@@ -459,45 +360,14 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             entry.append(0)
                             previous_delay2_array.append(0)
 
-                        # Determine if driver_switch is true
-                        driver_data = open(driver_change_path, "r")
-                        for driver_line in driver_data:
-                            driver_columns = driver_line.split(" ")
-                            if(future_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
-                                driver_location = driver_columns[4]
-                                if(entry[7] == 1):
-                                    route = route_E
-                                else:
-                                    route = route_O
-                                if(driver_location in route[:route.index(future_location)]):
-                                    entry.append(1)
-                        # If driver_switch was not found
-                        if(len(entry) == 15):
-                            entry.append(-1)
-
-                        # Determine if composition_change is true
-                        composition_data = open(composition_change_path, "r")
-                        for comp_line in composition_data:
-                            comp_columns = comp_line.split("\t")
-                            if(future_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
-                                composition_location = comp_columns[0]
-                                if(entry[7] == 1):
-                                    route = route_E
-                                else:
-                                    route = route_O
-                                if(composition_location in route[:route.index(future_location)]):
-                                    entry.append(1)
-                        # If composition_change was not found
-                        if(len(entry) == 16):
-                            entry.append(-1)
-
         # If the previous number was the connection of the trainnumber but the last data was more than 20 minutes back
         elif(previous_nr in train_cons.keys() and not(previous_nr == current_train_nr)):
             for entry in train_nr_entries[train_cons[previous_nr] % 100]:
                 if (current_date == entry[1] and entry[10] == -1 and entry[11] == previous_nr and len(entry) == 12):
                     future_location = entry[8]
                     future_nr = entry[0]
-
+                    # Add current location
+                    entry.append(previous_delay["loc"])
                     # Add delay from 20 minutes back
                     delay = previous_delay["delay"]
                     entry.append(delay)
@@ -517,50 +387,79 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                         entry.append(0)
                         previous_delay2_array.append(0)
 
-                    # Determine if driver_switch is true
-                    driver_data = open(driver_change_path, "r")
-                    for driver_line in driver_data:
-                        driver_columns = driver_line.split(" ")
-                        if (future_nr == int(driver_columns[3]) and entry[2] == int(driver_columns[5])):
-                            driver_location = driver_columns[4]
-                            if (entry[7] == 1):
-                                route = route_E
-                            else:
-                                route = route_O
-                            if (driver_location in route[:route.index(future_location)]):
-                                entry.append(1)
-                    # If driver_switch was not found
-                    if (len(entry) == 15):
-                        entry.append(-1)
-
-                    # Determine if composition_change is true
-                    composition_data = open(composition_change_path, "r")
-                    for comp_line in composition_data:
-                        comp_columns = comp_line.split("\t")
-                        if (future_nr == int(comp_columns[2]) and entry[2] == int(comp_columns[1])):
-                            composition_location = comp_columns[0]
-                            if (entry[7] == 1):
-                                route = route_E
-                            else:
-                                route = route_O
-                            if (composition_location in route[:route.index(future_location)]):
-                                entry.append(1)
-                    # If composition_change was not found
-                    if (len(entry) == 16):
-                        entry.append(-1)
-
         # Remember the previous delay and number
         previous_delay3 = previous_delay2
         previous_delay2 = previous_delay
         previous_delay = {"delay":current_delay,"nr":current_train_nr, "loc":current_location}
         previous_nr = current_train_nr
 
-    # For all entries check if there is a intial delay, else add 0 for initial, previous and second previous delay
-    # 0 can also be added for driver switch and composition change
+    print("Fill the features driver_switch and composition_change")
+
+    # Determine if driver_switch is true for every entry
+    driver_data = open(driver_change_path, "r")
+    for driver_line in driver_data:
+        driver_columns = driver_line.split(" ")
+        if (not (driver_columns[3] == "-")):
+            switch_nr = driver_columns[3]
+            switch_series = switch_nr[:-2] + "00"
+            if ((str(trainseries) == switch_series[0:len(str(trainseries))]) or (
+                    (5 - len(str(trainseries))) * "0" + str(trainseries) == switch_series[1:6])):
+                switch_location = driver_columns[4]
+                switch_day = int(driver_columns[5])
+                for entry in train_nr_entries[int(switch_nr) % 100]:
+                    if(switch_day == entry[2] and len(entry) == 16):
+                        if (entry[7] == 1):
+                            route = route_E
+                        else:
+                            route = route_O
+                        if(entry[10] == 1):
+                            if ((entry[12] in route) and (entry[8] in route)):
+                                if (switch_location in route[route.index(entry[12]):route.index(entry[8])]):
+                                    entry.append(1)
+                        elif(entry[10] == -1):
+                            if (entry[8] in route):
+                                if (switch_location in route[:route.index(entry[8])]):
+                                    entry.append(1)
+
+    # For all entries check if the driver switch feature has been added, else add -1.
     for nr in train_nr_entries:
-        if(nr):
+        if (nr):
             for entry in nr:
-                if(len(entry) == 12):
+                if (len(entry) == 16):
+                    entry.append(-1)
+
+    # Determine if composition_change is true for every entry
+    composition_data = open(composition_change_path, "r")
+    for comp_line in composition_data:
+        comp_columns = comp_line.split("\t")
+        change_nr = comp_columns[2]
+        change_series = change_nr[:-2] + "00"
+        if ((str(trainseries) == change_series[0:len(str(trainseries))]) or (
+                (5 - len(str(trainseries))) * "0" + str(trainseries) == change_series[1:6])):
+            change_location = comp_columns[0]
+            change_day = int(comp_columns[1])
+            for entry in train_nr_entries[int(change_nr) % 100]:
+                if (change_day == entry[2]):
+                    if (entry[7] == 1):
+                        route = route_E
+                    else:
+                        route = route_O
+                    if (entry[10] == 1):
+                        if ((entry[12] in route) and (entry[8] in route)):
+                            if (change_location in route[route.index(entry[12]):route.index(entry[8])]):
+                                entry.append(1)
+                    elif (entry[10] == -1):
+                        if (entry[8] in route):
+                            if (change_location in route[:route.index(entry[8])]):
+                                entry.append(1)
+
+    # For all entries check if there is a initial delay, else add 0 for initial location and delay, previous and
+    # second previous delay. -1 can also be added for composition change
+    for nr in train_nr_entries:
+        if (nr):
+            for entry in nr:
+                if (len(entry) == 12):
+                    entry.append("Unknown")
                     entry.append(0)
                     entry.append(0)
                     entry.append(0)
@@ -569,6 +468,10 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     previous_delay2_array.append(0)
                     entry.append(-1)
                     entry.append(-1)
+                elif (len(entry) == 17):
+                    entry.append(-1)
+
+    print("Write dataset to file")
 
     # Make file to write to
     if(not validation):
@@ -602,7 +505,6 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
     dataset.write("Day,Hour,Minutes,Direction,Location,Same_train,Driver_switch,Composition_change,Previous_delay2,Previous_delay,Delay,Future_Delay\n")
 
     # Write all entries to the dataset file
-    print(len(train_nr_entries))
     for i,nr in enumerate(train_nr_entries):
         if(nr):
             for j,entry in enumerate(nr):
@@ -614,11 +516,11 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                 location = entry[8]
                 future_delay = float(entry[9])
                 same_train = entry[10]
-                delay = float(entry[12])
-                previous_delay = float(entry[13])
-                previous_delay2 = float(entry[14])
-                driver_switch = entry[15]
-                composition_change = entry[16]
+                delay = float(entry[13])
+                previous_delay = float(entry[14])
+                previous_delay2 = float(entry[15])
+                driver_switch = entry[16]
+                composition_change = entry[17]
 
                 # Ceil every delay under zero (so a train that is too early) to zero
                 if(delay < 0):
@@ -635,6 +537,19 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                 #     hour = hour/23
                 #     minutes = minutes/59
                 #     delay = (delay - mean)/std
+
+                # Transform location as it is a categorical variable
+                if (location in locations_list):
+                    if (one_hot_encoding):
+                        location = transform_to_one_hot_encoding(locations_list, location, False)
+                    else:
+                        location = location_encoder.transform(np.array([location]))[0]
+                # If location in validatation/test set did not occur in train set, give either all zeros for one hot, or just -1
+                else:
+                    if (one_hot_encoding):
+                        location = [0] * len(locations_list)
+                    else:
+                        location = -1
 
                 # Change the future delay to match the problem (classification/regression)
                 if(category == 'Regression'):
