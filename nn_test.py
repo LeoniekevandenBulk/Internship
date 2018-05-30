@@ -17,7 +17,7 @@ def train_network(train_data, validation_data, category, batch_size, epochs, dat
     train_generator = get_databatch(train_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=True,
                                     augmentation=True, balance_batches=True)
     validation_generator = get_databatch(validation_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=True,
-                                         augmentation=True, balance_batches=True)
+                                         augmentation=False, balance_batches=True)
 
     # Depending on the category, set some of the model parameters differently
     if(category=='Regression'):
@@ -43,7 +43,7 @@ def train_network(train_data, validation_data, category, batch_size, epochs, dat
     model.add(Dropout(0.5))
     model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
     model.add(Dense(output_dim, activation=last_activation))
-    model.compile(loss=loss,optimizer=Adam(lr=0.01),metrics=metrics)
+    model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
 
     # Train network
     csv_logger = CSVLogger('C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\epoch_results.csv')
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     # Set important training parameters
     category = 'Change'
     trainseries = '3000'
-    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets_oud\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-Simple.csv"
+    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-Simple.csv"
     batch_size = 32
     epochs = 40
 

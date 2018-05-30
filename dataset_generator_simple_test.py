@@ -293,15 +293,15 @@ def generate_dataset_simple(realisation_path,connections_path,trainseries_locati
     if(not validation):
         if(regression):
             dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
+                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets_old\\TrainDataset" + str(trainseries) +
                 "_Category-Regression_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple1.txt", "w")
         elif(change):
             dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
+                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets_old\\TrainDataset" + str(trainseries) +
                 "_Category-Change_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple1.txt", "w")
         elif(jump):
             dataset = open(
-                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) +
+                "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets_old\\TrainDataset" + str(trainseries) +
                 "_Category-Jump_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple1.txt", "w")
     else:
         if(regression):
@@ -361,10 +361,10 @@ def generate_dataset_simple(realisation_path,connections_path,trainseries_locati
                     future_delay = 0
 
                 # Normalize current delay with standardization
-                # if(normalization):
-                #     hour = hour/23
-                #     minutes = minutes/59
-                #     delay = (delay - mean)/std
+                if(normalization):
+                    hour = hour/23
+                    minutes = minutes/59
+                    delay = (delay - mean)/std
 
                 # Change the future delay to match the problem (classification/regression)
                 if(regression):
