@@ -121,7 +121,7 @@ def list_trainseries_locations(trainseries, trainseries_locations_path):
 
 
 # Generate dataset to train on from realisation data
-def generate_dataset_medium(realisation_path, connections_path, trainseries_locations_path, composition_change_path,
+def generate_dataset_hard(realisation_path, connections_path, trainseries_locations_path, composition_change_path,
                             driver_change_path, route_path, timetable_path, trainseries, category, validation=False,
                             normalization=True, one_hot_encoding=False):
     # Open file to read from
@@ -178,10 +178,16 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
             time = columns[6][11::]
             hour = int(time[0:2])
             minutes =  int(time[3:5])
-            future_time = timedelta(hours=hour,minutes=minutes)
+            if (hour >= 0 and hour < 4):
+                future_time = timedelta(days=1, hours=hour, minutes=minutes)
+            else:
+                future_time = timedelta(days=0, hours=hour, minutes=minutes)
             # Save the begin time of a train number to be able to say if 20 minutes back is the same train
             if(not(train_nr == previous_nr)):
-                begin_time = timedelta(hours=hour,minutes=minutes)
+                if (hour >= 0 and hour < 4):
+                    begin_time = timedelta(days=1, hours=hour, minutes=minutes)
+                else:
+                    begin_time = timedelta(days=0, hours=hour, minutes=minutes)
             direction = series[-1]
             if(direction == "E"):
                 direction = 1
@@ -253,7 +259,7 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
     # and composition change
     for nr in train_nr_entries:
         if(nr):
-            for entry in nr:
+            for index,entry in enumerate(nr):
                 if(not(len(entry) == 12)):
                     entry.append(0)
                     entry.append("Unknown")
@@ -283,15 +289,19 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         current_delay = float(columns[8])
 
         # If the current trainseries is the same as trainseries we are looking for
-        if ((str(trainseries) == current_series[0:len(str(trainseries))]) or (
-                (5 - len(str(trainseries))) * "0" + str(trainseries) == current_series[1:6])):
+        if((str(trainseries) == current_series[0:-1]) or
+                (len(current_series) == 7 and int(current_series[0:-1]) < 400000 and
+                 (5-len(str(trainseries)))*"0"+str(trainseries) == current_series[1:6])):
             for entry in train_nr_entries[current_train_nr % 100]:
                 # If the entry should find the past delay within the same number at the same date
                 if(current_date == entry[1] and entry[10] == 1):
                     time = columns[6][11::]
                     current_hour = int(time[0:2])
                     current_minutes = int(time[3:5])
-                    current_time = timedelta(hours=current_hour, minutes=current_minutes)
+                    if (current_hour >= 0 and current_hour < 4):
+                        current_time = timedelta(days=1, hours=current_hour, minutes=current_minutes)
+                    else:
+                        current_time = timedelta(days=0, hours=current_hour, minutes=current_minutes)
                     future_time = entry[6]
                     future_location = entry[8]
 
@@ -350,7 +360,10 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     time = columns[6][11::]
                     current_hour = int(time[0:2])
                     current_minutes = int(time[3:5])
-                    current_time = timedelta(hours=current_hour, minutes=current_minutes)
+                    if (current_hour >= 0 and current_hour < 4):
+                        current_time = timedelta(days=1, hours=current_hour, minutes=current_minutes)
+                    else:
+                        current_time = timedelta(days=0, hours=current_hour, minutes=current_minutes)
                     future_time = entry[6]
                     future_location = entry[8]
                     future_nr = entry[0]
@@ -434,6 +447,8 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         previous_delay = {"delay":current_delay,"nr":current_train_nr, "loc":current_location}
         previous_nr = current_train_nr
 
+    realisation_data.close()
+
     print("Fill the features driver_switch and composition_change")
 
     # Determine if driver_switch is true for every entry
@@ -443,8 +458,9 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         if (not (driver_columns[3] == "-")):
             switch_nr = driver_columns[3]
             switch_series = switch_nr[:-2] + "00"
-            if ((str(trainseries) == switch_series[0:len(str(trainseries))]) or (
-                    (5 - len(str(trainseries))) * "0" + str(trainseries) == switch_series[1:6])):
+            if ((str(trainseries) == switch_series[0:-1]) or
+                    (len(switch_series) == 7 and int(switch_series[0:-1]) < 400000 and
+                     (5 - len(str(trainseries))) * "0" + str(trainseries) == switch_series[1:6])):
                 switch_location = driver_columns[4]
                 switch_day = int(driver_columns[5])
                 for entry in train_nr_entries[int(switch_nr) % 100]:
@@ -475,8 +491,9 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         comp_columns = comp_line.split("\t")
         change_nr = comp_columns[2]
         change_series = change_nr[:-2] + "00"
-        if ((str(trainseries) == change_series[0:len(str(trainseries))]) or (
-                (5 - len(str(trainseries))) * "0" + str(trainseries) == change_series[1:6])):
+        if ((str(trainseries) == change_series[0:-1]) or
+                (len(change_series) == 7 and int(change_series[0:-1]) < 400000 and
+                 (5 - len(str(trainseries))) * "0" + str(trainseries) == change_series[1:6])):
             change_location = comp_columns[0]
             change_day = int(comp_columns[1])
             for entry in train_nr_entries[int(change_nr) % 100]:
@@ -522,33 +539,59 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         route_columns = route_line.split(":")
         route_locations = route_columns[1].split(",")
         if(len(set(main_locations).intersection(set(route_locations))) > 0):
-            crossing_series.append({"series":route_columns[0],"locations":route_locations})
+            crossing_series.append({"series":route_columns[0],"locations":route_locations,"array":[]})
     route_data.close()
 
     # For each entry, find best location for each overlapping trainseries to save delay from
     for nr in train_nr_entries:
         if (nr):
             for entry in nr:
-                for series in crossing_series:
-                    found = False
-                    current_location = entry[12]
-                    if(current_location in series["locations"]):
-                        entry.append({"relevant": 1,"loc": current_location,"time": "","nr": ""})
-                        found = True
-                    else:
+                if(entry[10] == 1):
+                    for series in crossing_series:
+                        found = False
+                        current_location = entry[12]
+                        if(current_location in series["locations"]):
+                            entry.append({"relevant": 1,"loc": current_location,"time": "","nr": "", "delay":""})
+                            found = True
+                        else:
+                            if (entry[7] == 1):
+                                route = route_E
+                            else:
+                                route = route_O
+                            future_location = entry[8]
+                            if(route.__contains__(current_location)):
+                                index_begin = route.index(current_location)
+                            else:
+                                index_begin = 0
+                            if (route.__contains__(future_location)):
+                                index_end = route.index(future_location)
+                            else:
+                                index_end = len(route)-1
+
+                            for i in range(index_begin+1,index_end+1):
+                                if((route[i] in series["locations"]) and not found):
+                                    entry.append({"relevant": 1,"loc": route[i], "time": "", "nr": "", "delay":""})
+                                    found = True
+                        if(not found):
+                            entry.append({"relevant": 0, "loc": "", "time": "", "nr": "", "delay":""})
+                else:
+                    for series in crossing_series:
+                        found = False
                         if (entry[7] == 1):
                             route = route_E
                         else:
                             route = route_O
                         future_location = entry[8]
-                        index_begin = route.index(current_location)
-                        index_end = route.index(future_location)
-                        for i in range(index_begin+1,index_end+1):
-                            if(route[i] in series["locations"]):
-                                entry.append({"relevant": 1,"loc": route[i], "time": "", "nr": ""})
+                        if (route.__contains__(future_location)):
+                            index_end = route.index(future_location)
+                        else:
+                            index_end = len(route) - 1
+                        for i in range(0,index_end+1):
+                            if((route[i] in series["locations"]) and not found):
+                                entry.append({"relevant": 1,"loc": route[i], "time": "", "nr": "", "delay":""})
                                 found = True
-                    if(not found):
-                        entry.append({"relevant": 0, "loc": "", "time": "", "nr": ""})
+                        if(not found):
+                            entry.append({"relevant": 0, "loc": "", "time": "", "nr": "", "delay":""})
 
     # Loop through planning and find time each entry crosses a location in which it is crossed
     timetable_data = open(timetable_path, "r")
@@ -557,8 +600,9 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         timetable_columns = timetable_line.split(",")
         timetable_nr = timetable_columns[1]
         timetable_series = timetable_nr[:-2] + "00"
-        if ((str(trainseries) == timetable_series[0:len(str(trainseries))]) or (
-                (5 - len(str(trainseries))) * "0" + str(trainseries) == timetable_series[1:6])):
+        if ((str(trainseries) == timetable_series[0:-1]) or
+                (len(timetable_series) == 7 and int(timetable_series[0:-1]) < 400000 and
+                 (5 - len(str(trainseries))) * "0" + str(trainseries) == timetable_series[1:6])):
             timetable_location = timetable_columns[3]
             timetable_date = timetable_columns[0]
             timetable_day = calculate_weekday_timetable(timetable_date)
@@ -568,25 +612,115 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     for i in range(len(crossing_series)):
                         crossing = entry[18+i]
                         if(crossing["relevant"] == 1 and crossing["loc"] == timetable_location):
-                            crossing["time"] = timetable_columns[7][9:]
+                            if(not(timetable_columns[7] == '')):
+                                timetable_hours = int(timetable_columns[7][9:11])
+                                timetable_minutes = int(timetable_columns[7][12:14])
+                                if(timetable_hours >= 0 and timetable_hours < 4):
+                                    crossing["time"] = timedelta(days=1, hours=timetable_hours, minutes=timetable_minutes)
+                                else:
+                                    crossing["time"] = timedelta(days=0,hours=timetable_hours,minutes=timetable_minutes)
+    timetable_data.close()
 
     # Fill all entries where there are crossing trains with relevant=1, but no time, this means it was not found in the timetable
-
+    for nr in train_nr_entries:
+        if (nr):
+            for entry in nr:
+                for i in range(len(crossing_series)):
+                    crossing = entry[18 + i]
+                    if (crossing["relevant"] == 1 and crossing["time"] == ""):
+                        crossing["relevant"] = 0
 
     # Loop through planning to find the most suitable trainnumber per crossing series with the found times
+    timetable_data = open(timetable_path, "r")
+    for timetable_line in timetable_data:
+        timetable_line = timetable_line.replace('"', '')
+        timetable_columns = timetable_line.split(",")
+        timetable_nr = timetable_columns[1]
+        timetable_series = timetable_nr[:-2] + "00"
+        for index,cross_series in enumerate(crossing_series):
+            if ((cross_series["series"]== timetable_series[0:-1]) or
+                    (len(timetable_series) == 7 and int(timetable_series[0:-1]) < 400000 and
+                     (5 - len(cross_series["series"])) * "0" + cross_series["series"] == timetable_series[1:6])):
+                timetable_location = timetable_columns[3]
+                timetable_date = timetable_columns[0]
+                timetable_day = calculate_weekday_timetable(timetable_date)
+                timetable_hours = int(timetable_columns[7][9:11])
+                timetable_minutes = int(timetable_columns[7][12:14])
+                if (timetable_hours >= 0 and timetable_hours < 4):
+                    timetable_time = timedelta(days=1, hours=timetable_hours, minutes=timetable_minutes)
+                else:
+                    timetable_time = timedelta(days=0, hours=timetable_hours, minutes=timetable_minutes)
+                for nr in train_nr_entries:
+                    if (nr):
+                        for entry in nr:
+                            current_day = entry[2]
+                            if (timetable_day == current_day):
+                                crossing = entry[18 + index]
+                                if(crossing["relevant"] == 1 and timetable_location == crossing["loc"] and
+                                        timetable_time < crossing["time"]):
+                                    crossing["nr"] = timetable_nr
+    timetable_data.close()
 
+    # Loop through the realisation data to find the delays of the found trainnumbers per crossing series
+    realisation_data = open(realisation_path, "r")
+    for line in realisation_data:
+        line = line.replace('"', '')
+        columns = line.split(",")
+        series = columns[1]
+        train_nr = int(columns[3])
+        for index,cross_series in enumerate(crossing_series):
+            if ((cross_series["series"]== series[0:-1]) or
+                    (len(series) == 7 and int(series[0:-1]) < 400000 and
+                     (5 - len(cross_series["series"])) * "0" + cross_series["series"] == series[1:6])):
+                date = columns[0]
+                weekday = calculate_weekday(date)
+                hours = int(columns[7][9:11])
+                minutes = int(columns[7][12:14])
+                if (hours >= 0 and hours < 4):
+                    time = timedelta(days=1, hours=hours, minutes=minutes)
+                else:
+                    time = timedelta(days=0, hours=hours, minutes=minutes)
+                for nr in train_nr_entries:
+                    if (nr):
+                        for entry in nr:
+                            entry_day = entry[2]
+                            entry_hours = entry[4]
+                            entry_minutes = entry[5]
+                            if (entry_hours >= 0 and entry_hours < 4):
+                                entry_time = timedelta(days=1, hours=entry_hours, minutes=entry_minutes)
+                            else:
+                                entry_time = timedelta(days=0, hours=entry_hours, minutes=entry_minutes)
+                            if (weekday == entry_day):
+                                crossing = entry[18 + index]
+                                if(crossing["nr"] == train_nr and time < entry_time):
+                                    crossing_delay = int(columns[8])
+                                    if(crossing_delay < 0):
+                                        crossing_delay = 0
+                                    crossing["delay"] = crossing_delay
+                                    cross_series["array"].append(crossing_delay)
+    realisation_data.close()
+
+    # Fill all delays that have not been filled with 0
+    for index, cross_series in enumerate(crossing_series):
+        for nr in train_nr_entries:
+            if (nr):
+                for entry in nr:
+                    crossing = entry[18 + index]
+                    if(crossing["delay"] == ""):
+                        crossing["delay"] = 0
+                        cross_series["array"].append(0)
 
     print("Write dataset to file")
 
     # Make file to write to
     if(not validation):
         file_name = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + str(trainseries) + \
-                    "_Category-" + category + "_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Medium.txt"
+                    "_Category-" + category + "_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Hard.txt"
         dataset = open(file_name, "w")
 
     else:
         file_name = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + str(trainseries) + \
-                    "_Category-" + category + "_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Medium.txt"
+                    "_Category-" + category + "_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Hard.txt"
         dataset = open(file_name, "w")
 
     # Calculate parameters for the optional normalization and write them to file (needed for testing)
@@ -597,17 +731,25 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         previous_std = np.std(previous_delay_array)
         previous_mean2 = np.mean(previous_delay2_array)
         previous_std2 = np.std(previous_delay2_array)
-        dataset.write("Normalization parameters:" + str(mean) + "," + str(std) + "," + str(previous_mean) + "," +
-                      str(previous_std) + "," + str(previous_mean2) + "," + str(previous_std2) + "\n")
+        parameters = "Normalization parameters:" + str(mean) + "," + str(std) + "," + str(previous_mean) + "," + \
+                      str(previous_std) + "," + str(previous_mean2) + "," + str(previous_std2) + ","
+        for index,cross_series in enumerate(crossing_series):
+            parameters = parameters + np.mean(cross_series["array"]) + "," + np.std(cross_series["array"])
+            if(not(index == len(crossing_series-1))):
+                parameters = parameters + ","
+        parameters = parameters + "\n"
+        dataset.write(parameters)
     elif(normalization and validation):
         train_dataset = open(dataset.name.replace("Validation","Train"),"r")
-        line = train_dataset.readline()
-        columns = line.split(":")[1].split(",")
-        mean = float(columns[0])
-        std = float(columns[1])
+        normalization_line = train_dataset.readline()
+        normalization_columns = normalization_line.split(":")[1].split(",")
         train_dataset.close()
 
-    dataset.write("Day,Hour,Minutes,Direction,Location,Same_train,Driver_switch,Composition_change,Previous_delay2,Previous_delay,Delay,Future_Delay\n")
+    title = "Day,Hour,Minutes,Direction,Location,Same_train,Driver_switch,Composition_change,"
+    for cross_series in crossing_series:
+        title = title + cross_series["series"] + ","
+    title = title + "Previous_delay2,Previous_delay,Delay,Future_Delay\n"
+    dataset.write(title)
 
     # Write all entries to the dataset file
     for i,nr in enumerate(train_nr_entries):
@@ -638,10 +780,12 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     previous_delay2 = 0.0
 
                 # # Normalize current delay with standardization
-                # if(normalization):
-                #     hour = hour/23
-                #     minutes = minutes/59
-                #     delay = (delay - mean)/std
+                if(normalization):
+                    hour = hour/23
+                    minutes = minutes/59
+                    delay = (delay - float(normalization_columns[0]))/float(normalization_columns[1])
+                    previous_delay = (previous_delay - float(normalization_columns[2]))/float(normalization_columns[3])
+                    previous_delay2 = (previous_delay2 - float(normalization_columns[4]))/float(normalization_columns[5])
 
                 # Transform location as it is a categorical variable
                 if (location in locations_list):
@@ -659,17 +803,32 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                 # Change the future delay to match the problem (classification/regression)
                 if(category == 'Regression'):
                     if(one_hot_encoding):
-                        dataset.write(
-                            str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch)
-                            + "," + str(composition_change) + "," + str(previous_delay2) + "," + str(previous_delay) +
-                            "," + str(delay) + "," + str(future_delay))
+                        written_entry = str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction) \
+                                        + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch) \
+                                        + "," + str(composition_change) + ","
+                        for i in range(len(crossing_series)):
+                            crossing = entry[18 + i]
+                            crossing_delay = crossing["delay"]
+                            if(normalization):
+                                crossing_delay = (crossing_delay - normalization_columns[(2 * (i + 3))]) / normalization_columns[(2 * (i + 3)) + 1]
+                            written_entry = written_entry + crossing_delay + ","
+                        written_entry = written_entry + str(previous_delay2) + "," + str(previous_delay) + "," + \
+                                        str(delay) + "," + str(future_delay)
+                        dataset.write(written_entry)
                     else:
-                        dataset.write(
-                            str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                            + "," + str(location) + "," + str(same_train) + "," + str(driver_switch)
-                            + "," + str(composition_change) + "," +  str(previous_delay2)
-                            + "," + str(previous_delay) + "," + str(delay) + "," + str(future_delay))
+                        written_entry = str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction) + "," + \
+                                        str(location) + "," + str(same_train) + "," + str(driver_switch) + "," + \
+                                        str(composition_change) + ","
+                        for i in range(len(crossing_series)):
+                            crossing = entry[18 + i]
+                            crossing_delay = crossing["delay"]
+                            if(normalization):
+                                crossing_delay = (crossing_delay - normalization_columns[(2 * (i + 3))]) / normalization_columns[(2 * (i + 3)) + 1]
+                            written_entry = written_entry + crossing_delay + ","
+                        written_entry = written_entry + str(previous_delay2) + "," + str(previous_delay) + "," + \
+                                        str(delay) + "," + str(future_delay)
+                        dataset.write(written_entry)
+
                 elif(category == 'Change'):
                     category_list = ["increase","equal","decrease"]
                     if(future_delay - delay > 1):
@@ -678,22 +837,36 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                         future_category = "decrease"
                     else:
                         future_category = "equal"
-
                     if(one_hot_encoding):
                         future_category = transform_to_one_hot_encoding(category_list,future_category,False)
-                        dataset.write(
-                            str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch)
-                            + "," + str(composition_change) + "," +  str(previous_delay2) + "," + str(previous_delay) +
-                            "," + str(delay) + "," + str(future_category)[1:-1].replace(" ", ""))
+                        written_entry = str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes) + "," + str(direction) \
+                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch) \
+                            + "," + str(composition_change) + ","
+                        for i in range(len(crossing_series)):
+                            crossing = entry[18 + i]
+                            crossing_delay = crossing["delay"]
+                            if(normalization):
+                                crossing_delay = (crossing_delay - normalization_columns[(2 * (i + 3))]) / normalization_columns[(2 * (i + 3)) + 1]
+                            written_entry = written_entry + crossing_delay + ","
+                        written_entry = written_entry + str(previous_delay2) + "," + str(previous_delay) + \
+                            "," + str(delay) + "," + str(future_category)[1:-1].replace(" ", "")
+                        dataset.write(written_entry)
                     else:
                         output_encoder.fit(category_list)
                         future_category = output_encoder.transform(np.array([future_category]))[0]
-                        dataset.write(
-                            str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction)
-                            + "," + str(location) + "," + str(same_train)+ "," + str(driver_switch)
-                            + "," + str(composition_change) + "," + str(previous_delay2)
-                            + "," + str(previous_delay) + "," + str(delay) + "," + str(future_category))
+                        written_entry = str(day) + "," + str(hour) + "," + str(minutes) + "," + str(direction) \
+                            + "," + str(location) + "," + str(same_train)+ "," + str(driver_switch) \
+                            + "," + str(composition_change) + ","
+                        for i in range(len(crossing_series)):
+                            crossing = entry[18 + i]
+                            crossing_delay = crossing["delay"]
+                            if(normalization):
+                                crossing_delay = (crossing_delay - normalization_columns[(2 * (i + 3))]) / normalization_columns[(2 * (i + 3)) + 1]
+                            written_entry = written_entry + crossing_delay + ","
+                        written_entry = written_entry + str(previous_delay2) \
+                            + "," + str(previous_delay) + "," + str(delay) + "," + str(future_category)
+                        dataset.write(written_entry)
+
                 elif(category == 'Jump'):
                     if(abs(future_delay - delay) > 4):
                         future_category = 1
@@ -701,19 +874,33 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                         future_category = 0
 
                     if(one_hot_encoding):
-                        dataset.write(
-                            str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
-                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch)
-                            + "," + str(composition_change) + "," +  str(previous_delay2) + "," + str(previous_delay) +
-                            "," + str(delay) + "," + str(future_category))
+                        written_entry = str(day)[1:-1].replace(" ", "") + "," + str(hour) + "," + str(minutes)+ "," + str(direction) \
+                            + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train) + "," + str(driver_switch) \
+                            + "," + str(composition_change) + ","
+                        for i in range(len(crossing_series)):
+                            crossing = entry[18 + i]
+                            crossing_delay = crossing["delay"]
+                            if(normalization):
+                                crossing_delay = (crossing_delay - normalization_columns[(2 * (i + 3))]) / normalization_columns[(2 * (i + 3)) + 1]
+                            written_entry = written_entry + crossing_delay + ","
+                        written_entry = written_entry + str(previous_delay2) + "," + str(previous_delay) + \
+                            "," + str(delay) + "," + str(future_category)
+                        dataset.write(written_entry)
                     else:
                         output_encoder.fit([-1,1])
                         future_category = output_encoder.transform(np.array([future_category]))[0]
-                        dataset.write(
-                            str(day) + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
-                            + "," + str(location) + "," + str(same_train) + "," + str(driver_switch)
-                            + "," + str(composition_change) + "," + str(previous_delay2)
-                            + "," + str(previous_delay) + "," + str(delay) + "," + str(future_category))
+                        written_entry = str(day) + "," + str(hour) + "," + str(minutes)+ "," + str(direction) \
+                            + "," + str(location) + "," + str(same_train) + "," + str(driver_switch) \
+                            + "," + str(composition_change) + ","
+                        for i in range(len(crossing_series)):
+                            crossing = entry[18 + i]
+                            crossing_delay = crossing["delay"]
+                            if(normalization):
+                                crossing_delay = (crossing_delay - normalization_columns[(2 * (i + 3))]) / normalization_columns[(2 * (i + 3)) + 1]
+                            written_entry = written_entry + crossing_delay + ","
+                        written_entry = written_entry + str(previous_delay2) \
+                            + "," + str(previous_delay) + "," + str(delay) + "," + str(future_category)
+                        dataset.write(written_entry)
                 else:
                     print("No choice was made in the parameters which form the output should have, please do so")
                     exit()

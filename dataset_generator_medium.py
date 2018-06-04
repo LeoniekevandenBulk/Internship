@@ -137,10 +137,16 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
             time = columns[6][11::]
             hour = int(time[0:2])
             minutes =  int(time[3:5])
-            future_time = timedelta(hours=hour,minutes=minutes)
+            if (hour >= 0 and hour < 4):
+                future_time = timedelta(days=1, hours=hour, minutes=minutes)
+            else:
+                future_time = timedelta(days=0, hours=hour, minutes=minutes)
             # Save the begin time of a train number to be able to say if 20 minutes back is the same train
             if(not(train_nr == previous_nr)):
-                begin_time = timedelta(hours=hour,minutes=minutes)
+                if (hour >= 0 and hour < 4):
+                    begin_time = timedelta(days=1, hours=hour, minutes=minutes)
+                else:
+                    begin_time = timedelta(days=0, hours=hour, minutes=minutes)
             direction = series[-1]
             if(direction == "E"):
                 direction = 1
@@ -242,15 +248,19 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         current_delay = float(columns[8])
 
         # If the current trainseries is the same as trainseries we are looking for
-        if ((str(trainseries) == current_series[0:len(str(trainseries))]) or (
-                (5 - len(str(trainseries))) * "0" + str(trainseries) == current_series[1:6])):
+        if((str(trainseries) == current_series[0:-1]) or
+                (len(current_series) == 7 and int(current_series[0:-1]) < 400000 and
+                 (5-len(str(trainseries)))*"0"+str(trainseries) == current_series[1:6])):
             for entry in train_nr_entries[current_train_nr % 100]:
                 # If the entry should find the past delay within the same number at the same date
                 if(current_date == entry[1] and entry[10] == 1):
                     time = columns[6][11::]
                     current_hour = int(time[0:2])
                     current_minutes = int(time[3:5])
-                    current_time = timedelta(hours=current_hour, minutes=current_minutes)
+                    if (current_hour >= 0 and current_hour < 4):
+                        current_time = timedelta(days=1, hours=current_hour, minutes=current_minutes)
+                    else:
+                        current_time = timedelta(days=0, hours=current_hour, minutes=current_minutes)
                     future_time = entry[6]
                     future_location = entry[8]
 
@@ -309,7 +319,10 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     time = columns[6][11::]
                     current_hour = int(time[0:2])
                     current_minutes = int(time[3:5])
-                    current_time = timedelta(hours=current_hour, minutes=current_minutes)
+                    if (current_hour >= 0 and current_hour < 4):
+                        current_time = timedelta(days=1, hours=current_hour, minutes=current_minutes)
+                    else:
+                        current_time = timedelta(days=0, hours=current_hour, minutes=current_minutes)
                     future_time = entry[6]
                     future_location = entry[8]
                     future_nr = entry[0]
@@ -402,8 +415,9 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         if (not (driver_columns[3] == "-")):
             switch_nr = driver_columns[3]
             switch_series = switch_nr[:-2] + "00"
-            if ((str(trainseries) == switch_series[0:len(str(trainseries))]) or (
-                    (5 - len(str(trainseries))) * "0" + str(trainseries) == switch_series[1:6])):
+            if ((str(trainseries) == switch_series[0:-1]) or
+                    (len(switch_series) == 7 and int(switch_series[0:-1]) < 400000 and
+                     (5 - len(str(trainseries))) * "0" + str(trainseries) == switch_series[1:6])):
                 switch_location = driver_columns[4]
                 switch_day = int(driver_columns[5])
                 for entry in train_nr_entries[int(switch_nr) % 100]:
@@ -434,8 +448,9 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         comp_columns = comp_line.split("\t")
         change_nr = comp_columns[2]
         change_series = change_nr[:-2] + "00"
-        if ((str(trainseries) == change_series[0:len(str(trainseries))]) or (
-                (5 - len(str(trainseries))) * "0" + str(trainseries) == change_series[1:6])):
+        if ((str(trainseries) == change_series[0:-1]) or
+                (len(change_series) == 7 and int(change_series[0:-1]) < 400000 and
+                 (5 - len(str(trainseries))) * "0" + str(trainseries) == change_series[1:6])):
             change_location = comp_columns[0]
             change_day = int(comp_columns[1])
             for entry in train_nr_entries[int(change_nr) % 100]:
