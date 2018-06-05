@@ -24,12 +24,12 @@ for series in trainseries:
     if(dataset == 'Simple'):
         print("Creating trainingset for trainseries " + str(series))
         generate_dataset_simple(
-            realisation_path, connections_path, locations_path, series, category,
+            realisation_path, connections_path, locations_path, route_path, series, category,
             validation=False,normalization=normalization,one_hot_encoding=one_hot_encoding)
 
         print("Creating validationset for trainseries " + str(series))
         generate_dataset_simple(
-            validation_path, connections_path, locations_path, series, category,
+            validation_path, connections_path, locations_path, route_path, series, category,
             validation=True,normalization=normalization,one_hot_encoding=one_hot_encoding)
 
     elif(dataset == 'Medium'):

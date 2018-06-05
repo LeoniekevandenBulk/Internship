@@ -80,7 +80,7 @@ def list_trainseries_locations(trainseries, trainseries_locations_path):
 
 
 # Generate dataset to train on from realisation data
-def generate_dataset_simple(realisation_path, connections_path, trainseries_locations_path, trainseries, category,
+def generate_dataset_simple(realisation_path, connections_path, trainseries_locations_path, route_path, trainseries, category,
                             validation=False, normalization=True, one_hot_encoding=False):
     # Open file to read from
     realisation_data = open(realisation_path, "r")
@@ -98,6 +98,18 @@ def generate_dataset_simple(realisation_path, connections_path, trainseries_loca
     # Initialize list of locations the trainseries passes
     locations_list = list_trainseries_locations(trainseries, trainseries_locations_path)
     location_encoder.fit(locations_list)
+
+    # Read route for this series
+    route_O = []
+    route_E = []
+    route_data = open(route_path, "r")
+    for route_line in route_data:
+        route_columns = route_line.split(":")
+        if(route_columns[0] == (str(trainseries) + "O")):
+            route_O = route_columns[1].strip("\n").split(",")
+        elif(route_columns[0] == (str(trainseries) + "E")):
+            route_E = route_columns[1].strip("\n").split(",")
+    route_data.close()
 
     print("Realisation data first iteration")
 
@@ -193,19 +205,24 @@ def generate_dataset_simple(realisation_path, connections_path, trainseries_loca
     for con_line in connection_data:
         con_columns = con_line.split("\t")
         con_columns[4] = con_columns[4].replace("\n","")
-        con_weekday = con_columns[0]
-        con_train_nr = int(con_columns[3])
-        if((int(con_train_nr/100) == int(trainseries/100)) or
-                (len(str(con_train_nr)) == 6 and con_train_nr < 400000 and
-                 int(str(int(con_train_nr/100))[-1*len(str(int(trainseries/100))):]) == int(trainseries/100))):
-            for entry in train_nr_entries[con_train_nr%100]:
-
+        con_weekday = int(con_columns[0])
+        con_location = con_columns[2]
+        con_train_nr = con_columns[3]
+        con_series = con_train_nr[:-2] + "00"
+        if ((str(trainseries) == con_series) or
+                (len(con_series) == 6 and int(con_series) < 400000 and
+                 (5 - len(str(trainseries))) * "0" + str(trainseries) == con_series[1:6])):
+            for entry in train_nr_entries[int(con_train_nr)%100]:
+                direction = entry[7]
+                if(direction == 1):
+                    route = route_E
+                else:
+                    route = route_O
                 # Check if same_train is -1 and the weekday is correct
-                if(entry[10] == -1 and con_weekday == entry[2]):
-
+                if(len(entry) == 11 and route[0] == con_location and entry[10] == -1 and con_weekday == entry[2]):
                     # Append with connection train number
                     entry.append(int(con_columns[1]))
-                    train_cons[int(con_columns[1])] = con_train_nr
+                    train_cons[int(con_columns[1])] = int(con_train_nr)
 
     # Close connection file
     connection_data.close()
@@ -216,7 +233,7 @@ def generate_dataset_simple(realisation_path, connections_path, trainseries_loca
     for nr in train_nr_entries:
         if(nr):
             for entry in nr:
-                if(not(len(entry) == 12)):
+                if(len(entry) == 11):
                     entry.append(0)
                     entry.append(0)
                     current_delay_array.append(0)
@@ -354,11 +371,11 @@ def generate_dataset_simple(realisation_path, connections_path, trainseries_loca
                 if(future_delay < 0):
                     future_delay = 0.0
 
-                # Normalize current delay with standardization
-                # if(normalization):
-                #     hour = hour/23
-                #     minutes = minutes/59
-                #     delay = (delay - mean)/std
+                #Normalize current delay with standardization
+                if(normalization):
+                    hour = hour/23
+                    minutes = minutes/59
+                    delay = (delay - mean)/std
 
                 # Change the future delay to match the problem (classification/regression)
                 if(category == 'Regression'):

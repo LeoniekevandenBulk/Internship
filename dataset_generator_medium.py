@@ -195,18 +195,24 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
     for con_line in connection_data:
         con_columns = con_line.split("\t")
         con_columns[4] = con_columns[4].replace("\n","")
-        con_weekday = con_columns[0]
-        con_train_nr = int(con_columns[3])
-        if((int(con_train_nr/100) == int(trainseries/100)) or
-                (len(str(con_train_nr)) == 6 and con_train_nr < 400000 and
-                 int(str(int(con_train_nr/100))[-1*len(str(int(trainseries/100))):]) == int(trainseries/100))):
-            for entry in train_nr_entries[con_train_nr%100]:
-
-                # Check if same_train is -1 and the weekday is correct, then add it to the right entry as the delay should come from there
-                if(entry[10] == -1 and con_weekday == entry[2]):
+        con_weekday = int(con_columns[0])
+        con_location = con_columns[2]
+        con_train_nr = con_columns[3]
+        con_series = con_train_nr[:-2] + "00"
+        if ((str(trainseries) == con_series) or
+                (len(con_series) == 6 and int(con_series) < 400000 and
+                 (5 - len(str(trainseries))) * "0" + str(trainseries) == con_series[1:6])):
+            for entry in train_nr_entries[int(con_train_nr)%100]:
+                direction = entry[7]
+                if(direction == 1):
+                    route = route_E
+                else:
+                    route = route_O
+                # Check if same_train is -1 and the weekday is correct
+                if(len(entry) == 11 and route[0] == con_location and entry[10] == -1 and con_weekday == entry[2]):
                     # Append with connection train number
                     entry.append(int(con_columns[1]))
-                    train_cons[int(con_columns[1])] = con_train_nr
+                    train_cons[int(con_columns[1])] = int(con_train_nr)
 
     # Close connection file
     connection_data.close()
@@ -403,7 +409,7 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         # Remember the previous delay and number
         previous_delay3 = previous_delay2
         previous_delay2 = previous_delay
-        previous_delay = {"delay":current_delay,"nr":current_train_nr, "loc":current_location}
+        previous_delay = {"delay":current_delay, "nr":current_train_nr, "loc":current_location}
         previous_nr = current_train_nr
 
     print("Fill the features driver_switch and composition_change")
@@ -411,12 +417,12 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
     # Determine if driver_switch is true for every entry
     driver_data = open(driver_change_path, "r")
     for driver_line in driver_data:
-        driver_columns = driver_line.split(" ")
+        driver_columns = driver_line.replace("\n","").split(" ")
         if (not (driver_columns[3] == "-")):
             switch_nr = driver_columns[3]
             switch_series = switch_nr[:-2] + "00"
-            if ((str(trainseries) == switch_series[0:-1]) or
-                    (len(switch_series) == 7 and int(switch_series[0:-1]) < 400000 and
+            if ((str(trainseries) == switch_series) or
+                    (len(switch_series) == 6 and int(switch_series) < 400000 and
                      (5 - len(str(trainseries))) * "0" + str(trainseries) == switch_series[1:6])):
                 switch_location = driver_columns[4]
                 switch_day = int(driver_columns[5])
@@ -430,7 +436,7 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             if ((entry[12] in route) and (entry[8] in route)):
                                 if (switch_location in route[route.index(entry[12]):route.index(entry[8])]):
                                     entry.append(1)
-                        elif(entry[10] == -1):
+                        if(entry[10] == -1):
                             if (entry[8] in route):
                                 if (switch_location in route[:route.index(entry[8])]):
                                     entry.append(1)
@@ -445,16 +451,16 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
     # Determine if composition_change is true for every entry
     composition_data = open(composition_change_path, "r")
     for comp_line in composition_data:
-        comp_columns = comp_line.split("\t")
+        comp_columns = comp_line.replace("\n","").split("\t")
         change_nr = comp_columns[2]
         change_series = change_nr[:-2] + "00"
-        if ((str(trainseries) == change_series[0:-1]) or
-                (len(change_series) == 7 and int(change_series[0:-1]) < 400000 and
+        if ((str(trainseries) == change_series) or
+                (len(change_series) == 6 and int(change_series) < 400000 and
                  (5 - len(str(trainseries))) * "0" + str(trainseries) == change_series[1:6])):
             change_location = comp_columns[0]
             change_day = int(comp_columns[1])
             for entry in train_nr_entries[int(change_nr) % 100]:
-                if (change_day == entry[2]):
+                if (change_day == entry[2] and len(entry) == 17):
                     if (entry[7] == 1):
                         route = route_E
                     else:
@@ -485,6 +491,12 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     entry.append(-1)
                 elif (len(entry) == 17):
                     entry.append(-1)
+
+    for nr in train_nr_entries:
+        if (nr):
+            for entry in nr:
+                if (not (len(entry) == 18)):
+                    print(len(entry))
 
     print("Write dataset to file")
 
@@ -547,11 +559,11 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                 if(previous_delay2 < 0):
                     previous_delay2 = 0.0
 
-                # # Normalize current delay with standardization
-                # if(normalization):
-                #     hour = hour/23
-                #     minutes = minutes/59
-                #     delay = (delay - mean)/std
+                # Normalize current delay with standardization
+                if(normalization):
+                    hour = hour/23
+                    minutes = minutes/59
+                    delay = (delay - mean)/std
 
                 # Transform location as it is a categorical variable
                 if (location in locations_list):
