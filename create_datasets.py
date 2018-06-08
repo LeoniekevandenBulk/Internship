@@ -44,10 +44,10 @@ for series in trainseries:
             series, category, validation=True, normalization=normalization, one_hot_encoding=one_hot_encoding)
 
     elif(dataset == 'Hard'):
-        print("Creating trainingset for trainseries " + str(series))
-        generate_dataset_hard(
-            realisation_path, connections_path, locations_path, composition_change_path, driver_change_path, route_path,
-            timetable_path, series, category, validation=False, normalization=normalization, one_hot_encoding=one_hot_encoding)
+        # print("Creating trainingset for trainseries " + str(series))
+        # generate_dataset_hard(
+        #     realisation_path, connections_path, locations_path, composition_change_path, driver_change_path, route_path,
+        #     timetable_path, series, category, validation=False, normalization=normalization, one_hot_encoding=one_hot_encoding)
 
         print("Creating validationset for trainseries " + str(series))
         generate_dataset_hard(

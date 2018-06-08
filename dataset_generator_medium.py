@@ -492,12 +492,6 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                 elif (len(entry) == 17):
                     entry.append(-1)
 
-    for nr in train_nr_entries:
-        if (nr):
-            for entry in nr:
-                if (not (len(entry) == 18)):
-                    print(len(entry))
-
     print("Write dataset to file")
 
     # Make file to write to
