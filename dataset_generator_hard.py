@@ -3,6 +3,7 @@ import numpy as np
 from collections import defaultdict
 from sklearn import preprocessing
 from datetime import datetime
+import copy
 
 # Create function for one hot encoding of categorical variables
 def transform_to_one_hot_encoding(category_list, category, drop_column=False):
@@ -606,12 +607,6 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
                         if(not found):
                             entry.append({"relevant": 0, "loc": "", "time": "", "nr": ("",False), "delay": ("",False)})
     print("Hier2")
-
-    for nr in train_nr_entries:
-        if (nr):
-            for entry in nr:
-                if(not(len(entry)==(18+len(crossing_series)))):
-                    print(len(entry))
     print("Hier3")
 
     # Loop through planning and find time each entry crosses a location in which it is crossed
@@ -682,9 +677,12 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
 
     train_entries_dict = {1:crossing_dict.copy(), 2:crossing_dict.copy(), 3:crossing_dict.copy(), 4:crossing_dict.copy(), 5:crossing_dict.copy()}
     tracking_number = 0 # number to know which dictionary entries belong to the same original entry
+    ENTRIES = 0
+    ITER = 0
     for nr in train_nr_entries:
         if (nr):
             for entry in nr:
+                ENTRIES = ENTRIES + 1
                 entry_date = entry[1]
                 entry_day = calculate_weekday(entry_date)
                 for index,series in enumerate(crossing_series):
@@ -694,11 +692,16 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
                     new_entry.append(crossing)
                     new_entry.append(tracking_number)
                     if(crossing["relevant"] == 1):
+                        ITER = ITER+1
                         train_entries_dict[entry_day][series["series"]][entry_date][crossing_loc].append(new_entry)
                     else:
+                        ITER = ITER + 1
                         train_entries_dict[entry_day][series["series"]][entry_date]["Unknown"].append(new_entry)
                 tracking_number = tracking_number + 1
 
+    print("LEN CROSSING SERIES:" + str(len(crossing_series)))
+    print("ENTRIES:" + str(ENTRIES))
+    print("ITERS:" + str(ITER))
     print("Hier5.5")
     print(datetime.now() - startTime)
 
@@ -795,7 +798,33 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
     #                                         crossing["nr"] = (crossing["nr"][0], True)
     # timetable_data.close()
 
+    # Reshape the entry dictionary to be able to add the previously found number to speed up computation
+    ENTRIES2 = 0
+    train_entries_dict_with_nr = copy.deepcopy(train_entries_dict)
+    for weekday in train_entries_dict:
+        for crossing in train_entries_dict[weekday]:
+            for date in train_entries_dict[weekday][crossing]:
+                train_entries_dict_with_nr[weekday][crossing][date] = {}
+                for index in range(100):
+                    train_entries_dict_with_nr[weekday][crossing][date][index] = {}
+                for loc in train_entries_dict[weekday][crossing][date]:
+                    for entry in train_entries_dict[weekday][crossing][date][loc]:
+                        ENTRIES2 = ENTRIES2 + 1
+                        nr = entry[18]["nr"][0]
+                        if(nr == ""): #Save entries with no crossing in number 0 as this a train number will never be 0
+                            if(loc in train_entries_dict_with_nr[weekday][crossing][date][0]):
+                                train_entries_dict_with_nr[weekday][crossing][date][0][loc].append(entry)
+                            else:
+                                train_entries_dict_with_nr[weekday][crossing][date][0][loc] = []
+                                train_entries_dict_with_nr[weekday][crossing][date][0][loc].append(entry)
+                        else:
+                            if(loc in train_entries_dict_with_nr[weekday][crossing][date][int(nr)%100]):
+                                train_entries_dict_with_nr[weekday][crossing][date][int(nr)%100][loc].append(entry)
+                            else:
+                                train_entries_dict_with_nr[weekday][crossing][date][int(nr)%100][loc] = []
+                                train_entries_dict_with_nr[weekday][crossing][date][int(nr)%100][loc].append(entry)
 
+    print("ENTRIES2:"+ str(ENTRIES2))
     print("Hier6")
 
     # Loop through the realisation data to find the delays of the found trainnumbers per crossing series
@@ -807,11 +836,14 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
         columns = line.split(",")
         date = columns[0]
         series = columns[1]
-        train_nr = int(columns[3])
+        train_nr = int(columns[3])%100
         weekday = calculate_weekday(date)
         if (series in crossing_series_list):
             normal_series = series
-            relevant_entries_dict = train_entries_dict[weekday][normal_series][date]
+            if(train_nr in train_entries_dict_with_nr[weekday][normal_series][date]):
+                relevant_entries_dict = train_entries_dict_with_nr[weekday][normal_series][date][train_nr]
+            else:
+                continue
         elif (len(series) == 7 and int(series[0:-1]) < 400000):
             normal_series = 0
             if (series[0:3] == "100" or series[0:3] == "200" or series[0:3] == "300"):
@@ -821,7 +853,10 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
             elif (series[0:1] == "1" or series[0:1] == "2" or series[0:1] == "3"):
                 normal_series = series[1:]
             if (not (normal_series == 0) and normal_series in crossing_series_list):
-                relevant_entries_dict = train_entries_dict[weekday][normal_series][date]
+                if (train_nr in train_entries_dict_with_nr[weekday][normal_series][date]):
+                    relevant_entries_dict = train_entries_dict_with_nr[weekday][normal_series][date][train_nr]
+                else:
+                    continue
             else:
                 continue
         else:
@@ -846,12 +881,12 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
                 crossing = entry[18]
 
                 if (crossing["delay"][1] == False):
-                    if (crossing["nr"][0] == train_nr and time < entry_time):
+                    if (time < entry_time):
                         crossing_delay = int(columns[8])
                         if (crossing_delay < 0):
                             crossing_delay = 0
                         crossing["delay"] = (crossing_delay, False)
-                    elif (crossing["nr"][0] == train_nr and time >= entry_time):
+                    elif (time >= entry_time):
                         crossing["delay"] = (crossing["delay"][0], True)
                         crossing_series[crossing_series_list.index(normal_series)]["array"].append(crossing["delay"][0])
     realisation_data.close()
@@ -901,24 +936,28 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
     # realisation_data.close()
 
     print("Hier7")
-
+    x=0
     # Transform all crossing entries back to their original entry form and fill all delays that have not been filled with 0
     transformed_entries_dict = {}
-    for day in train_entries_dict:
-        for series in train_entries_dict[day]:
-            for date in train_entries_dict[day][series]:
-                for location in train_entries_dict[day][series][date]:
-                    for entry in train_entries_dict[day][series][date][location]:
-                        crossing = entry[18]
-                        if(crossing["delay"][0] == ""):
-                            crossing["delay"] = (0,False)
-                            crossing_series[crossing_series_list.index(series)]["array"].append(0)
-                        if(entry[19] in transformed_entries_dict):
-                            transformed_entries_dict[entry[19]].append(crossing)
-                        else:
-                            transformed_entries_dict[entry[19]] = entry[0:-1]
+    for day in train_entries_dict_with_nr:
+        for series in train_entries_dict_with_nr[day]:
+            for date in train_entries_dict_with_nr[day][series]:
+                for nr in train_entries_dict_with_nr[day][series][date]:
+                    for location in train_entries_dict_with_nr[day][series][date][nr]:
+                        for entry in train_entries_dict_with_nr[day][series][date][nr][location]:
+                            if(entry[19]==1):
+                                x = x+1
+                            crossing = entry[18]
+                            if(crossing["delay"][0] == ""):
+                                crossing["delay"] = (0,False)
+                                crossing_series[crossing_series_list.index(series)]["array"].append(0)
+                            if(entry[19] in transformed_entries_dict):
+                                transformed_entries_dict[entry[19]].append(crossing)
+                            else:
+                                transformed_entries_dict[entry[19]] = entry[0:-1]
 
-
+    print("TRACKING NUMBER 1:" + str(x))
+    #print(transformed_entries_dict[25])
     # for index, cross_series in enumerate(crossing_series):
     #     for nr in train_nr_entries:
     #         if (nr):
