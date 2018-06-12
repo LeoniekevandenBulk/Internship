@@ -423,8 +423,6 @@ def generate_dataset_simple(realisation_path, connections_path, trainseries_loca
                             + "," + str(location)[1:-1].replace(" ", "") + "," + str(same_train)
                             + "," + str(delay) + "," + str(future_category))
                     else:
-                        output_encoder.fit([-1,1])
-                        future_category = output_encoder.transform(np.array([future_category]))[0]
                         dataset.write(
                             str(day) + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
                             + "," + str(location) + "," + str(same_train)

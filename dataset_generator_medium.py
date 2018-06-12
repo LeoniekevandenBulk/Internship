@@ -623,8 +623,6 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                             + "," + str(composition_change) + "," +  str(previous_delay2) + "," + str(previous_delay) +
                             "," + str(delay) + "," + str(future_category))
                     else:
-                        output_encoder.fit([-1,1])
-                        future_category = output_encoder.transform(np.array([future_category]))[0]
                         dataset.write(
                             str(day) + "," + str(hour) + "," + str(minutes)+ "," + str(direction)
                             + "," + str(location) + "," + str(same_train) + "," + str(driver_switch)

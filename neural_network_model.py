@@ -142,6 +142,19 @@ def validate_network(network_path, validation_data, category, batch_size, mean, 
         # Print f1 scores
         print('F1 score no jump/jump: ' + str(fbeta_score(validation_labels, jump_pred, 1)))
 
+def test_network(network_path, test_data, category, batch_size, mean, std):
+    # Load model
+    model = load_model(network_path)
+
+    # Generator for predictions
+    prediction_generator = get_testbatch(test_data, mean, std, batch_size=batch_size, category=category, normalization=True,
+                                         augmentation=False)
+
+    # Predict labels for the test data
+    test_steps = int(np.ceil(float(len(test_data)) / float(batch_size)))
+    preds = model.predict_generator(prediction_generator, test_steps)
+    preds = preds[:len(test_data)]
+
 
 if __name__ == "__main__":
     # Set important training parameters
