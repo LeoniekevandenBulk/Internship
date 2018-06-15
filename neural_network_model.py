@@ -173,15 +173,15 @@ if __name__ == "__main__":
     batch_size = 32
     epochs = 20
     balance_batches = True
-    normalization = False
-    augmentation = False
+    normalization = True
+    augmentation = True
 
     # Set this to the network file if you want to validate or test
     network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\FILLIN.hdf5"
 
     if(train):
         # Set datafile
-        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".csv"
+        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
 
         # Check if CSV already exists, else create csv from txt
         if(not(Path(dataset_file).is_file())):
@@ -195,11 +195,12 @@ if __name__ == "__main__":
             validation_csv.writerows(validation_reader)
 
         # Load data and transform to Panda dataframe (skip first two lines in train and first line in validation)
-        train_data = pd.read_csv(dataset_file, header=None, skiprows=2)
+        train_data = pd.read_csv(dataset_file, header=None, skiprows=1)
         validation_data = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"), header=None, skiprows=1)
 
         # Load normalization parameters if necessary
-        dataset = open(dataset_file)
+        normalization_dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
+        dataset = open(normalization_dataset_file)
         line = dataset.readline()
         columns = line.split(":")[1].split(",")
         mean  = []
