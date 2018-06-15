@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-def get_databatch(data, mean, std, batch_size=32, category='Regression', shuffle=True, normalization=True, augmentation=True, balance_batches=False):
+def get_databatch2(data, mean, std, batch_size=32, category='Regression', shuffle=True, normalization=True, augmentation=True, balance_batches=False):
     # Set label length for category
     if(category=='Change'):
         label_length = 3
@@ -82,7 +82,8 @@ def get_databatch(data, mean, std, batch_size=32, category='Regression', shuffle
                 if(normalization):
                     entry[1] = entry[1]/23
                     entry[2] = entry[2]/59
-                    entry[-1] = (entry[-1] - mean) / std
+                    for x in range(len(mean)):
+                        entry[(x+1)*-1] = (entry[(x+1)*-1] -  mean[x]) / std[x]
 
                 entry_batch[j] = entry
                 label_batch[j] = label
@@ -91,7 +92,7 @@ def get_databatch(data, mean, std, batch_size=32, category='Regression', shuffle
 
             yield entry_batch, label_batch
 
-def get_databatch2(data, mean, std, batch_size=32, category='Regression', shuffle=True, normalization=True, augmentation=True, balance_batches=False):
+def get_databatch(data, mean, std, batch_size=32, category='Regression', shuffle=True, normalization=True, augmentation=True, balance_batches=False):
     # Set label length for category
     if(category=='Change'):
         label_length = 3
@@ -163,7 +164,8 @@ def get_databatch2(data, mean, std, batch_size=32, category='Regression', shuffl
                 if(normalization):
                     entry[1] = entry[1]/23
                     entry[2] = entry[2]/59
-                    entry[-1] = (entry[-1] - mean) / std
+                    for x in range(len(mean)):
+                        entry[(x+1)*-1] = (entry[(x+1)*-1] -  mean[x]) / std[x]
 
                 entry_batch[j] = entry
                 label_batch[j] = label
@@ -199,9 +201,10 @@ def get_testbatch(data, mean, std, batch_size=32, category='Regression', normali
 
                 # Add normalization on the fly as it otherwise interferes with the augmentation (assumes one-hot encoding)
                 if(normalization):
-                    entry[1] = entry[5]/23
-                    entry[2] = entry[6]/59
-                    entry[-1] = (entry[-1] - mean) / std
+                    entry[1] = entry[1]/23
+                    entry[2] = entry[2]/59
+                    for x in range(len(mean)):
+                        entry[(x+1)*-1] = (entry[(x+1)*-1] -  mean[x]) / std[x]
 
                 entry_batch[j] = entry
 

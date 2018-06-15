@@ -12,8 +12,8 @@ from scipy.sparse import csr_matrix
 from matplotlib import pyplot
 import pickle
 
-# Function to train XGB on a categorical dataset with multiple sets of parameters, pick the best set and output performance of this set
-def find_parameters_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, one_hot_encoding=True, sparse=True):
+# Function to find the best XGB parameters on a dataset by testing multiple sets of parameters, picking the best set and outputting performance of this set
+def find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_encoding=True, sparse=True):
 
     # Check if CSV already exists, else create csv from txt
     if(not(Path(dataset_file).is_file())):
@@ -79,65 +79,127 @@ def find_parameters_categorical_XGB(dataset_file, nr_of_classes, categorical_lab
         'scale_pos_weight': [1,3,5]
     }
 
-    # Initialize the XGBoost classifier with a gridsearch to test all combinations of parameters
-    xgb =  GridSearchCV(estimator = XGBClassifier(
-        learning_rate=0.1,
-        n_estimators=1000,
-        max_depth=5,
-        min_child_weight=1,
-        gamma=0,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=0,
-        objective='multi:softmax',
-        num_class = nr_of_classes,
-        scale_pos_weight=1,
-        seed=42),
-        param_grid = test_params,
-        scoring = 'f1_macro',
-        cv = 5)
+    if(category == 'Change' or category == 'Jump'):
+        # Set number of classes
+        if(category == 'Change'):
+            nr_of_classes = 3
+        else:
+            nr_of_classes = 2
 
-    # Determine an evaluation set during training
-    eval_set = [(train_features,train_labels),(validation_features,validation_labels)]
+        # Initialize the XGBoost classifier with a gridsearch to test all combinations of parameters
+        xgb =  GridSearchCV(estimator = XGBClassifier(
+            learning_rate=0.1,
+            n_estimators=1000,
+            max_depth=5,
+            min_child_weight=1,
+            gamma=0,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=0,
+            objective='multi:softmax',
+            num_class = nr_of_classes,
+            scale_pos_weight=1,
+            seed=42),
+            param_grid = test_params,
+            scoring = 'f1_macro',
+            cv = 5)
 
-    # Fit models and save the best parameters
-    xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric="mlogloss",early_stopping_rounds=30)
-    print(xgb.cv_results_)
-    best_params = xgb.best_params_
-    print(best_params)
-    print(xgb.best_score_)
+        # Determine an evaluation set during training
+        eval_set = [(train_features,train_labels),(validation_features,validation_labels)]
 
-    # Make XGBoost classifier with the best found parameters
-    best_xgb =  XGBClassifier(
-        learning_rate=best_params["learning_rate"],
-        n_estimators=1000,
-        max_depth=best_params["max_depth"],
-        min_child_weight=best_params["min_child_weight"],
-        gamma=best_params["gamma"],
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=best_params["reg_alpha"],
-        objective='multi:softmax',
-        num_class = nr_of_classes,
-        scale_pos_weight=1,
-        seed=42)
+        # Fit models and save the best parameters
+        xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric="mlogloss",early_stopping_rounds=30)
+        print(xgb.cv_results_)
+        best_params = xgb.best_params_
+        print(best_params)
+        print(xgb.best_score_)
 
-    # Fit best model
-    best_xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric=["merror","mlogloss"],early_stopping_rounds=30)
+        # Make XGBoost classifier with the best found parameters
+        best_xgb =  XGBClassifier(
+            learning_rate=best_params["learning_rate"],
+            n_estimators=1000,
+            max_depth=best_params["max_depth"],
+            min_child_weight=best_params["min_child_weight"],
+            gamma=best_params["gamma"],
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=best_params["reg_alpha"],
+            objective='multi:softmax',
+            num_class = nr_of_classes,
+            scale_pos_weight=1,
+            seed=42)
 
-    # Pickle and save best model and training figures
-    save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + \
-                dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
-                + ".pkl"
-    pickle.dump(best_xgb,open(save_path_model,"wb"))
+        # Fit best model
+        best_xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric=["merror","mlogloss"],early_stopping_rounds=30)
 
-    # Predict on validation set and print accuracy
-    predictions = best_xgb.predict(validation_features)
-    print("Accuracy: %.4g" % metrics.accuracy_score(validation_labels, predictions))
+        # Pickle and save best model and training figures
+        save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\" + \
+                    dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
+                    + ".dat"
+        pickle.dump(best_xgb,open(save_path_model,"wb"))
+
+        # Predict on validation set and print accuracy
+        predictions = best_xgb.predict(validation_features)
+        print("Accuracy: %.4g" % metrics.accuracy_score(validation_labels, predictions))
+    else:
+        # Initialize the XGBoost classifier with a gridsearch to test all combinations of parameters
+        xgb = GridSearchCV(estimator=XGBRegressor(
+            learning_rate=0.1,
+            n_estimators=1000,
+            max_depth=5,
+            min_child_weight=1,
+            gamma=0,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=0,
+            objective='reg:linear',
+            scale_pos_weight=1,
+            seed=42),
+            param_grid=test_params,
+            scoring='neg_mean_squared_error',
+            cv=5)
+
+        # Determine an evaluation set during training
+        eval_set = [(train_features, train_labels), (validation_features, validation_labels)]
+
+        # Fit models and save the best parameters
+        xgb.fit(train_features, train_labels, eval_set=eval_set, eval_metric="rmse", early_stopping_rounds=30)
+        print(xgb.cv_results_)
+        best_params = xgb.best_params_
+        print(best_params)
+        print(xgb.best_score_)
+
+        # Make XGBoost classifier with the best found parameters
+        best_xgb = XGBRegressor(
+            learning_rate=best_params["learning_rate"],
+            n_estimators=1000,
+            max_depth=best_params["max_depth"],
+            min_child_weight=best_params["min_child_weight"],
+            gamma=best_params["gamma"],
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=best_params["reg_alpha"],
+            objective='reg:linear',
+            seed=42)
+
+        # Fit best model
+        best_xgb.fit(train_features, train_labels, eval_set=eval_set, eval_metric="rmse", early_stopping_rounds=30)
+
+        # Pickle and save best model and training figures
+        save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\" + \
+                          dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\",
+                                               "").replace(".csv", "") \
+                          + ".pkl"
+        pickle.dump(best_xgb, open(save_path_model, "wb"))
+
+        # Predict on validation set and print accuracy
+        predictions = best_xgb.predict(validation_features)
+        print("Root Mean squared error: %.4g" % math.sqrt(
+            metrics.mean_squared_error(validation_labels.values, predictions)))
 
 
-# Function to test the XGB on a categorical dataset with the best parameters
-def train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, params, one_hot_encoding=True, sparse=True, save_figures=True):
+# Function to train the XGB on a dataset with the best parameters for this problem
+def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encoding=True, sparse=True, save_figures=True):
 
     # Check if CSV already exists, else create csv from txt
     if(not(Path(dataset_file).is_file())):
@@ -196,338 +258,247 @@ def train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, param
     # Determine an evaluation set during training
     eval_set = [(train_features,train_labels),(validation_features,validation_labels)]
 
-    # Make XGBoost classifier with the best found parameters
-    best_xgb =  XGBClassifier(
-        learning_rate=params["learning_rate"],
-        n_estimators=1000,
-        max_depth=params["max_depth"],
-        min_child_weight=params["min_child_weight"],
-        gamma=params["gamma"],
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=params["reg_alpha"],
-        objective='multi:softmax',
-        num_class = nr_of_classes,
-        scale_pos_weight=1,
-        seed=42)
+    if(category == 'Change' or category == 'Jump'):
+        # Set number of classes
+        if(category == 'Change'):
+            nr_of_classes = 3
+        else:
+            nr_of_classes = 2
 
-    # Fit best model
-    best_xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric=["merror","mlogloss"],early_stopping_rounds=30)
+        # Make XGBoost classifier with the best found parameters
+        best_xgb =  XGBClassifier(
+            learning_rate=params["learning_rate"],
+            n_estimators=1000,
+            max_depth=params["max_depth"],
+            min_child_weight=params["min_child_weight"],
+            gamma=params["gamma"],
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=params["reg_alpha"],
+            objective='multi:softmax',
+            num_class = nr_of_classes,
+            scale_pos_weight=1,
+            seed=42)
 
-    # Predict on validation set and print accuracy
-    predictions = best_xgb.predict(validation_features)
-    accuracy = metrics.accuracy_score(validation_labels, predictions)
-    print("Accuracy: %.4g" % accuracy)
+        # Fit best model
+        best_xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric=["merror","mlogloss"],early_stopping_rounds=30)
 
-    # Pickle and save best model and training figures
-    save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + \
-                dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
-                + str(accuracy) + ".pkl"
-    pickle.dump(best_xgb,open(save_path_model,"wb"))
+        # Predict on validation set and print accuracy
+        predictions = best_xgb.predict(validation_features)
+        accuracy = metrics.accuracy_score(validation_labels, predictions)
+        print("Accuracy: %.4g" % accuracy)
 
-    if(save_figures):
-        # Determine path to save figures
-        save_path_figure = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost_Figures\\" + \
-                    dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","")
+        # Pickle and save best model and training figures
+        save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\" + \
+                    dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
+                    + str(accuracy) + ".pkl"
+        pickle.dump(best_xgb,open(save_path_model,"wb"))
 
-        # Plot feature importance
-        plot_importance(best_xgb)
-        pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
+        if(save_figures):
+            # Determine path to save figures
+            save_path_figure = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost_Figures\\" + category + "\\" + \
+                        dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","")
 
-        # # Plot final decision tree
-        # for i in range (0,10):
-        #     plot_tree(best_xgb, num_trees=i)
-        #     fig = pyplot.gcf()
-        #     fig.set_size_inches(150, 100)
-        #     fig.savefig(save_path_figure + "-DecisionTree" + str(i+1) + ".png")
+            # Plot feature importance
+            plot_importance(best_xgb)
+            pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
 
-        # Plot learning curves
-        results = best_xgb.evals_result()
-        epochs = len(results['validation_0']['merror'])
-        x_axis = range(0, epochs)
-        # Log loss
-        fig, ax = pyplot.subplots()
-        ax.plot(x_axis, results['validation_0']['mlogloss'], label='Train')
-        ax.plot(x_axis, results['validation_1']['mlogloss'], label='Validation')
-        ax.legend()
-        pyplot.ylabel('Log Loss')
-        pyplot.title('XGBoost Log Loss')
-        pyplot.savefig(save_path_figure + "-LogLoss.png")
-        # Classification error
-        fig, ax = pyplot.subplots()
-        ax.plot(x_axis, results['validation_0']['merror'], label='Train')
-        ax.plot(x_axis, results['validation_1']['merror'], label='Validation')
-        ax.legend()
-        pyplot.ylabel('Classification Error')
-        pyplot.title('XGBoost Classification Error')
-        pyplot.savefig(save_path_figure + "-ClassificationError.png")
+            # # Plot final decision tree
+            # for i in range (0,10):
+            #     plot_tree(best_xgb, num_trees=i)
+            #     fig = pyplot.gcf()
+            #     fig.set_size_inches(150, 100)
+            #     fig.savefig(save_path_figure + "-DecisionTree" + str(i+1) + ".png")
 
+            # Plot learning curves
+            results = best_xgb.evals_result()
+            epochs = len(results['validation_0']['merror'])
+            x_axis = range(0, epochs)
+            # Log loss
+            fig, ax = pyplot.subplots()
+            ax.plot(x_axis, results['validation_0']['mlogloss'], label='Train')
+            ax.plot(x_axis, results['validation_1']['mlogloss'], label='Validation')
+            ax.legend()
+            pyplot.ylabel('Log Loss')
+            pyplot.title('XGBoost Log Loss')
+            pyplot.savefig(save_path_figure + "-LogLoss.png")
+            # Classification error
+            fig, ax = pyplot.subplots()
+            ax.plot(x_axis, results['validation_0']['merror'], label='Train')
+            ax.plot(x_axis, results['validation_1']['merror'], label='Validation')
+            ax.legend()
+            pyplot.ylabel('Classification Error')
+            pyplot.title('XGBoost Classification Error')
+            pyplot.savefig(save_path_figure + "-ClassificationError.png")
+    else:
+        # Make XGBoost classifier with the best found parameters
+        best_xgb = XGBRegressor(
+            objective='reg:linear',
+            booster='gbtree',
+            learning_rate=params["learning_rate"],
+            n_estimators=1000,
+            max_depth=params["max_depth"],
+            min_child_weight=params["min_child_weight"],
+            gamma=params["gamma"],
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=params["reg_alpha"],
+            seed=42)
 
-# Function to train XGB on a regression dataset with multiple sets of parameters, pick the best set and output performance of this set
-def find_parameters_regression_XGB(dataset_file, categorical_labels, one_hot_encoding=True, sparse=True):
+        # Fit best model
+        best_xgb.fit(train_features, train_labels, eval_set=eval_set, eval_metric="rmse", early_stopping_rounds=30)
+
+        # Predict on validation set and print accuracy
+        predictions = best_xgb.predict(validation_features)
+        rmse = math.sqrt(metrics.mean_squared_error(validation_labels.values, predictions))
+        print("Root Mean squared error: %.4g" % rmse)
+
+        # Pickle and save best model and training figures
+        save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\" + \
+                          dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\",
+                                               "").replace(".csv", "") \
+                          + str(rmse) + ".dat"
+        pickle.dump(best_xgb, open(save_path_model, "wb"))
+
+        if (save_figures):
+            # Determine path to save figures
+            save_path_figure = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost_Figures\\" + category + "\\" + \
+                               dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\",
+                                                    "").replace(".csv", "")
+
+            # Plot feature importance
+            plot_importance(best_xgb)
+            pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
+
+            # # Plot final decision tree
+            # for i in range (0,10):
+            #     plot_tree(best_xgb, num_trees=i)
+            #     fig = pyplot.gcf()
+            #     fig.set_size_inches(150, 100)
+            #     fig.savefig(save_path_figure + "-DecisionTree" + str(i+1) + ".png")
+
+            # Plot learning curves
+            results = best_xgb.evals_result()
+            epochs = len(results['validation_0']['rmse'])
+            x_axis = range(0, epochs)
+            # Log loss
+            fig, ax = pyplot.subplots()
+            ax.plot(x_axis, results['validation_0']['rmse'], label='Train')
+            ax.plot(x_axis, results['validation_1']['rmse'], label='Validation')
+            ax.legend()
+            pyplot.ylabel('RMSE')
+            pyplot.title('XGBoost RMSE')
+            pyplot.savefig(save_path_figure + "-RMSE.png")
+
+# Function to test the XGBoost on a dataset with a trained XGBoost model
+def test_XGB(model_path, testset_file, prediction_file, category, categorical_labels, params, one_hot_encoding=True, sparse=True):
 
     # Check if CSV already exists, else create csv from txt
-    if(not(Path(dataset_file).is_file())):
-        dataset_txt = dataset_file.replace("csv","txt")
-        validation_txt = dataset_txt.replace("TrainDataset","ValidationDataset")
-        dataset_reader = csv.reader(open(dataset_txt,"r"), delimiter = ",")
-        dataset_csv = csv.writer(open(dataset_file,"w",newline=""))
-        dataset_csv.writerows(dataset_reader)
-        validation_reader = csv.reader(open(validation_txt,"r"), delimiter = ",")
-        validation_csv = csv.writer(open(dataset_file.replace("TrainDataset","ValidationDataset"),"w", newline=""))
-        validation_csv.writerows(validation_reader)
+    if(not(Path(testset_file).is_file())):
+        testset_txt = testset_file.replace("csv","txt")
+        testset_reader = csv.reader(open(testset_txt,"r"), delimiter = ",")
+        testset_csv = csv.writer(open(testset_file,"w",newline=""))
+        testset_csv.writerows(testset_reader)
 
     # Load data and transform to Panda dataframe
-    train = pd.read_csv(dataset_file)
-    validation = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"))
-    target = "Future_Delay"
-    predictors = [x for x in train.columns if not (x == target)]
-
-    # Split predictors and labels
-    train_data = train[predictors]
-    train_labels = train[target]
-    validation_data = validation[predictors]
-    validation_labels = validation[target]
+    test = pd.read_csv(testset_file)
+    predictors = [x for x in test.columns]
+    test_data = test[predictors]
 
     # If desired, transform categorical data in to one hot encoding and potentially sparse matrices
     if(one_hot_encoding):
-        train_features = None
-        validation_features = None
+        test_features = None
 
         for predictor in predictors:
-            train_feature = train_data[predictor].values
-            train_feature = train_feature.reshape(train_feature.shape[0], 1)
-            validation_feature = validation_data[predictor].values
-            validation_feature = validation_feature.reshape(validation_feature.shape[0], 1)
+            test_feature = test_data[predictor].values
+            test_feature = test_feature.reshape(test_feature.shape[0], 1)
 
             if(predictor in categorical_labels):
                 one_hot_encoder = OneHotEncoder(sparse=False)
-                train_feature = one_hot_encoder.fit_transform(train_feature)
-                validation_feature = one_hot_encoder.transform(validation_feature)
+                test_feature = one_hot_encoder.fit_transform(test_feature)
 
-            if train_features is None:
-                train_features = train_feature
-                validation_features = validation_feature
+            if test_features is None:
+                test_features = test_feature
             else:
-                train_features = np.concatenate((train_features, train_feature), axis=1)
-                validation_features = np.concatenate((validation_features, validation_feature), axis=1)
+                test_features = np.concatenate((test_features, test_feature), axis=1)
 
         if(sparse):
-            train_features = csr_matrix(train_features)
-            validation_features = csr_matrix(validation_features)
+            test_features = csr_matrix(test_features)
 
     else:
-        train_features = train_data
-        validation_features = validation_data
+        test_features = test_data
 
-    # Set different values for the parameters to test to find the best model
-    test_params = {
-        'max_depth': [3,4,5],
-        'min_child_weight': [3,5,7],
-        'gamma': [0,0.2,0.4],
-        'reg_alpha': [0.001, 0.01, 0.1],
-        'learning_rate': [0.01, 0.1, 0.2],
-        'scale_pos_weight': [1,3,5]
-    }
+    if(category == 'Change' or category == 'Jump'):
+        # Set number of classes
+        if(category == 'Change'):
+            nr_of_classes = 3
+        else:
+            nr_of_classes = 2
 
-    # Initialize the XGBoost classifier with a gridsearch to test all combinations of parameters
-    xgb =  GridSearchCV(estimator = XGBRegressor(
-        learning_rate=0.1,
-        n_estimators=1000,
-        max_depth=5,
-        min_child_weight=1,
-        gamma=0,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=0,
-        objective='reg:linear',
-        scale_pos_weight=1,
-        seed=42),
-        param_grid = test_params,
-        scoring = 'neg_mean_squared_error',
-        cv = 5)
+        # Load XGBoost classifier
+        best_xgb = pickle.load(open(model_path,"rb"))
 
-    # Determine an evaluation set during training
-    eval_set = [(train_features,train_labels),(validation_features,validation_labels)]
+        # Predict test set
+        predictions = best_xgb.predict(test_features)
 
-    # Fit models and save the best parameters
-    xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric="rmse",early_stopping_rounds=30)
-    print(xgb.cv_results_)
-    best_params = xgb.best_params_
-    print(best_params)
-    print(xgb.best_score_)
+        # Write predictions to file
+        with open(prediction_file,"w") as file:
+            for pred in predictions:
+                file.write(pred + "\n")
 
-    # Make XGBoost classifier with the best found parameters
-    best_xgb =  XGBRegressor(
-        learning_rate=best_params["learning_rate"],
-        n_estimators=1000,
-        max_depth=best_params["max_depth"],
-        min_child_weight=best_params["min_child_weight"],
-        gamma=best_params["gamma"],
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=best_params["reg_alpha"],
-        objective='reg:linear',
-        seed=42)
-
-    # Fit best model
-    best_xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric="rmse",early_stopping_rounds=30)
-
-    # Pickle and save best model and training figures
-    save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + \
-                dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
-                + ".pkl"
-    pickle.dump(best_xgb,open(save_path_model,"wb"))
-
-    # Predict on validation set and print accuracy
-    predictions = best_xgb.predict(validation_features)
-    print("Root Mean squared error: %.4g" % math.sqrt(metrics.mean_squared_error(validation_labels.values, predictions)))
-
-
-# Function to test the XGB on a regression dataset with the best parameters
-def train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encoding=True, sparse=True, save_figures = True):
-
-    # Check if CSV already exists, else create csv from txt
-    if(not(Path(dataset_file).is_file())):
-        dataset_txt = dataset_file.replace("csv","txt")
-        validation_txt = dataset_txt.replace("TrainDataset","ValidationDataset")
-        dataset_reader = csv.reader(open(dataset_txt,"r"), delimiter = ",")
-        dataset_csv = csv.writer(open(dataset_file,"w",newline=""))
-        dataset_csv.writerows(dataset_reader)
-        validation_reader = csv.reader(open(validation_txt,"r"), delimiter = ",")
-        validation_csv = csv.writer(open(dataset_file.replace("TrainDataset","ValidationDataset"),"w", newline=""))
-        validation_csv.writerows(validation_reader)
-
-    # Load data and transform to Panda dataframe
-    train = pd.read_csv(dataset_file)
-    validation = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"))
-    target = "Future_Delay"
-    predictors = [x for x in train.columns if not (x == target)]
-
-    # Split predictors and labels
-    train_data = train[predictors]
-    train_labels = train[target]
-    validation_data = validation[predictors]
-    validation_labels = validation[target]
-
-    # If desired, transform categorical data in to one hot encoding and potentially sparse matrices
-    if(one_hot_encoding):
-        train_features = None
-        validation_features = None
-
-        for predictor in predictors:
-            train_feature = train_data[predictor].values
-            train_feature = train_feature.reshape(train_feature.shape[0], 1)
-            validation_feature = validation_data[predictor].values
-            validation_feature = validation_feature.reshape(validation_feature.shape[0], 1)
-
-            if(predictor in categorical_labels):
-                one_hot_encoder = OneHotEncoder(sparse=False)
-                train_feature = one_hot_encoder.fit_transform(train_feature)
-                validation_feature = one_hot_encoder.transform(validation_feature)
-
-            if train_features is None:
-                train_features = train_feature
-                validation_features = validation_feature
-            else:
-                train_features = np.concatenate((train_features, train_feature), axis=1)
-                validation_features = np.concatenate((validation_features, validation_feature), axis=1)
-
-        if(sparse):
-            train_features = csr_matrix(train_features)
-            validation_features = csr_matrix(validation_features)
 
     else:
-        train_features = train_data
-        validation_features = validation_data
+        # Make XGBoost classifier with the best found parameters
+        best_xgb = XGBRegressor(
+            objective='reg:linear',
+            booster='gbtree',
+            learning_rate=params["learning_rate"],
+            n_estimators=1000,
+            max_depth=params["max_depth"],
+            min_child_weight=params["min_child_weight"],
+            gamma=params["gamma"],
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=params["reg_alpha"],
+            seed=42)
 
-    # Determine an evaluation set during training
-    eval_set = [(train_features,train_labels),(validation_features,validation_labels)]
+        # Load XGBoost classifier
+        best_xgb = pickle.load(open(model_path,"rb"))
 
-    # Make XGBoost classifier with the best found parameters
-    best_xgb =  XGBRegressor(
-        objective='reg:linear',
-        booster='gbtree',
-        learning_rate=params["learning_rate"],
-        n_estimators=1000,
-        max_depth=params["max_depth"],
-        min_child_weight=params["min_child_weight"],
-        gamma=params["gamma"],
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=params["reg_alpha"],
-        seed=42)
+        # Predict test set
+        predictions = best_xgb.predict(test_features)
 
-    # Fit best model
-    best_xgb.fit(train_features,train_labels,eval_set=eval_set,eval_metric="rmse",early_stopping_rounds=30)
-
-    # Predict on validation set and print accuracy
-    predictions = best_xgb.predict(validation_features)
-    rmse = math.sqrt(metrics.mean_squared_error(validation_labels.values, predictions))
-    print("Root Mean squared error: %.4g" % rmse)
-
-    # Pickle and save best model and training figures
-    save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + \
-                dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
-                + str(rmse) + ".pkl"
-    pickle.dump(best_xgb,open(save_path_model,"wb"))
-
-    if(save_figures):
-        # Determine path to save figures
-        save_path_figure = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost_Figures\\" + \
-                    dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","")
-
-        # Plot feature importance
-        plot_importance(best_xgb)
-        pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
-
-        # # Plot final decision tree
-        # for i in range (0,10):
-        #     plot_tree(best_xgb, num_trees=i)
-        #     fig = pyplot.gcf()
-        #     fig.set_size_inches(150, 100)
-        #     fig.savefig(save_path_figure + "-DecisionTree" + str(i+1) + ".png")
-
-        # Plot learning curves
-        results = best_xgb.evals_result()
-        epochs = len(results['validation_0']['rmse'])
-        x_axis = range(0, epochs)
-        # Log loss
-        fig, ax = pyplot.subplots()
-        ax.plot(x_axis, results['validation_0']['rmse'], label='Train')
-        ax.plot(x_axis, results['validation_1']['rmse'], label='Validation')
-        ax.legend()
-        pyplot.ylabel('RMSE')
-        pyplot.title('XGBoost RMSE')
-        pyplot.savefig(save_path_figure + "-RMSE.png")
+        # Write predictions to file
+        with open(prediction_file,"w") as file:
+            for pred in predictions:
+                file.write(pred + "\n")
 
 
 if __name__== "__main__":
-    # Set parameters
+    find_parameters = False
+    train = True
+    test = False
+
+    # Set important training parameters
     trainseries = '3000'
+    category = 'Change'
     dataset_type = 'Medium'
-
-    ###############
-    # Categorical #
-    ###############
-    # Define file to train on and amount of classes of the dataset here
-    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-Change_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
-    nr_of_classes = 3
     categorical_labels = ["Day", "Location"]
+    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
+    testset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
+    prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\XGBoost\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
 
-    # Train/test
-    #find_parameters_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, one_hot_encoding=False, sparse=False)
-    params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01, 'scale_pos_weight': 1}
-    train_categorical_XGB(dataset_file, nr_of_classes, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
+    # Set this if you want to test with an existing XGB model
+    RMSE = 0
+    XGB_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + \
+                                                str(RMSE) + ".dat"
 
-    ##############
-    # Regression #
-    ##############
-    # Define file to train on for regression
-    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-Regression_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
-    categorical_labels = ["Day", "Location"]
+    if(find_parameters):
+        find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_encoding=False, sparse=False)
 
-    # Train/test
-    #find_parameters_regression_XGB(dataset_file, categorical_labels, one_hot_encoding=False, sparse=False)
-    params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01}
-    train_regression_XGB(dataset_file, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
+    if(train):
+        params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01, 'scale_pos_weight': 1}
+        train_XGB(dataset_file, category, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
+
+    if(test):
+        test_XGB(XGB_path, testset_file, prediction_file, category, categorical_labels, one_hot_encoding=False, sparse=False)

@@ -505,7 +505,7 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     "_Category-" + category + "_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Medium.txt"
         dataset = open(file_name, "w")
 
-    # Calculate parameters for the optional normalization and write them to file (needed for testing)
+    # Calculate parameters for the optional normalization and write them to file (also needed for validation/testing)
     if(normalization and not validation):
         mean = np.mean(current_delay_array)
         std = np.std(current_delay_array)
@@ -521,6 +521,10 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         columns = line.split(":")[1].split(",")
         mean = float(columns[0])
         std = float(columns[1])
+        previous_mean = float(columns[2])
+        previous_std = float(columns[3])
+        previous_mean2 = float(columns[4])
+        previous_std2 = float(columns[5])
         train_dataset.close()
 
     dataset.write("Day,Hour,Minutes,Direction,Location,Same_train,Driver_switch,Composition_change,Previous_delay2,Previous_delay,Delay,Future_Delay\n")
@@ -558,6 +562,8 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
                     hour = hour/23
                     minutes = minutes/59
                     delay = (delay - mean)/std
+                    previous_delay = (previous_delay - previous_mean) / previous_std
+                    previous_delay2 = (previous_delay2 - previous_mean2) / previous_std2
 
                 # Transform location as it is a categorical variable
                 if (location in locations_list):

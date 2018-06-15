@@ -336,7 +336,7 @@ def generate_dataset_simple(realisation_path, connections_path, trainseries_loca
                     "_Category-" + category + "_Normalization-" + str(normalization) + "_OneHotEncoding-" + str(one_hot_encoding) + "_Model-Simple.txt"
         dataset = open(file_name, "w")
 
-    # Calculate parameters for the optional normalization and write them to file (needed for testing)
+    # Calculate parameters for the optional normalization and write them to file (also needed for validation/testing)
     if(normalization and not validation):
         mean = np.mean(current_delay_array)
         std = np.std(current_delay_array)

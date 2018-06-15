@@ -9,7 +9,7 @@ from keras.layers import Dense, Dropout, BatchNormalization
 from keras.optimizers import Adam, SGD
 from keras.callbacks import CSVLogger, ModelCheckpoint, ReduceLROnPlateau
 from sklearn.metrics import fbeta_score, mean_squared_error
-from batch_generator import get_databatch, get_testbatch
+from batch_generator import get_databatch, get_testbatch, get_databatch2
 from matplotlib import pyplot
 
 def train_network(train_data, validation_data, category, dataset_type, batch_size, epochs, dataset_file, mean, std,
@@ -18,7 +18,7 @@ def train_network(train_data, validation_data, category, dataset_type, batch_siz
     train_generator = get_databatch(train_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=normalization,
                                     augmentation=augmentation, balance_batches=balance_batches)
     validation_generator = get_databatch(validation_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=normalization,
-                                         augmentation=True, balance_batches=balance_batches)
+                                         augmentation=False, balance_batches=balance_batches)
 
     # Determine path to save logger files, models and figures
     csv_logger_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\epoch_results.csv"
@@ -142,7 +142,7 @@ def validate_network(network_path, validation_data, category, batch_size, mean, 
         # Print f1 scores
         print('F1 score no jump/jump: ' + str(fbeta_score(validation_labels, jump_pred, 1)))
 
-def test_network(network_path, test_data, category, batch_size, mean, std):
+def test_network(network_path, test_data, category, batch_size, mean, std, prediction_file):
     # Load model
     model = load_model(network_path)
 
@@ -155,59 +155,125 @@ def test_network(network_path, test_data, category, batch_size, mean, std):
     preds = model.predict_generator(prediction_generator, test_steps)
     preds = preds[:len(test_data)]
 
+    # Write predictions to file
+    with open(prediction_file,"w") as file:
+        for pred in preds:
+            file.write(pred + "\n")
 
 if __name__ == "__main__":
+    # Choose to either train, validate or test
+    train = True
+    validate = False
+    test = False
+
     # Set important training parameters
     trainseries = '3000'
     category = 'Change'
-    dataset_type = 'Medium'
+    dataset_type = 'Simple'
     batch_size = 32
-    epochs = 40
-    dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".csv"
+    epochs = 20
+    balance_batches = True
+    normalization = False
+    augmentation = False
 
-    # Set parameters for the batch generator on basis of the category
-    if(category=='Regression'):
-        normalization = False
-        augmentation = False
-        balance_batches = False
-    else:
-        normalization = True
-        augmentation = True
-        balance_batches = True
+    # Set this to the network file if you want to validate or test
+    network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\FILLIN.hdf5"
 
-    # Check if CSV already exists, else create csv from txt
-    if(not(Path(dataset_file).is_file())):
-        dataset_txt = dataset_file.replace("csv","txt")
-        validation_txt = dataset_txt.replace("TrainDataset","ValidationDataset")
-        dataset_reader = csv.reader(open(dataset_txt,"r"), delimiter = ",")
-        dataset_csv = csv.writer(open(dataset_file,"w",newline=""))
-        dataset_csv.writerows(dataset_reader)
-        validation_reader = csv.reader(open(validation_txt,"r"), delimiter = ",")
-        validation_csv = csv.writer(open(dataset_file.replace("TrainDataset","ValidationDataset"),"w", newline=""))
-        validation_csv.writerows(validation_reader)
+    if(train):
+        # Set datafile
+        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".csv"
 
-    # Load data and transform to Panda dataframe (skip first two lines in train and first line in validation)
-    train_data = pd.read_csv(dataset_file, header=None, skiprows=2)
-    validation_data = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"), header=None, skiprows=1)
+        # Check if CSV already exists, else create csv from txt
+        if(not(Path(dataset_file).is_file())):
+            dataset_txt = dataset_file.replace("csv","txt")
+            validation_txt = dataset_txt.replace("TrainDataset","ValidationDataset")
+            dataset_reader = csv.reader(open(dataset_txt,"r"), delimiter = ",")
+            dataset_csv = csv.writer(open(dataset_file,"w",newline=""))
+            dataset_csv.writerows(dataset_reader)
+            validation_reader = csv.reader(open(validation_txt,"r"), delimiter = ",")
+            validation_csv = csv.writer(open(dataset_file.replace("TrainDataset","ValidationDataset"),"w", newline=""))
+            validation_csv.writerows(validation_reader)
 
-    # Load normalization parameters if necessary
-    dataset = open(dataset_file)
-    line = dataset.readline()
-    columns = line.split(":")[1].split(",")
-    mean = float(columns[0])
-    std = float(columns[1])
-    dataset.close()
+        # Load data and transform to Panda dataframe (skip first two lines in train and first line in validation)
+        train_data = pd.read_csv(dataset_file, header=None, skiprows=2)
+        validation_data = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"), header=None, skiprows=1)
 
-    ####################
+        # Load normalization parameters if necessary
+        dataset = open(dataset_file)
+        line = dataset.readline()
+        columns = line.split(":")[1].split(",")
+        mean  = []
+        std = []
+        for index,param in enumerate(columns):
+            if(index%2 == 0):
+                mean.append(float(param))
+            else:
+                std.append(float(param))
+        dataset.close()
 
-    # Train network with the data
-    train_network(train_data, validation_data, category, dataset_type, batch_size, epochs, dataset_file, mean, std,
-                  normalization=normalization, augmentation=augmentation, balance_batches=balance_batches)
+        ####################
 
-    #########OR#########
+        # Train network with the data
+        train_network(train_data, validation_data, category, dataset_type, batch_size, epochs, dataset_file, mean, std,
+                      normalization=normalization, augmentation=augmentation, balance_batches=balance_batches)
 
-    # # Validate network with data
-    # network_path = ""
-    # validate_network(network_path, validation_data, category, batch_size, mean, std)
+    if (validate):
+        # Set datafile
+        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".csv"
 
-    ###################
+        # Check if CSV already exists, else create csv from txt
+        if (not (Path(dataset_file).is_file())):
+            dataset_txt = dataset_file.replace("csv", "txt")
+            dataset_reader = csv.reader(open(dataset_txt, "r"), delimiter=",")
+            dataset_csv = csv.writer(open(dataset_file, "w", newline=""))
+            dataset_csv.writerows(dataset_reader)
+
+        # Load data and transform to Panda dataframe (skip first two lines in train and first line in validation)
+        validation_data = pd.read_csv(dataset_file, header=None, skiprows=1)
+
+        # Load normalization parameters if necessary
+        train_data = open(dataset_file.replace("ValidationDataset","TrainDataset"))
+        line = train_data.readline()
+        columns = line.split(":")[1].split(",")
+        mean  = []
+        std = []
+        for index,param in enumerate(columns):
+            if(index%2 == 0):
+                mean.append(float(param))
+            else:
+                std.append(float(param))
+        dataset.close()
+
+        # Validate network with the data
+        validate_network(network_path, validation_data, category, batch_size, mean, std)
+
+    if(test):
+        # Set datafile
+        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".csv"
+        prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\NeuralNetwork\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
+
+        # Check if CSV already exists, else create csv from txt
+        if (not (Path(dataset_file).is_file())):
+            dataset_txt = dataset_file.replace("csv", "txt")
+            dataset_reader = csv.reader(open(dataset_txt, "r"), delimiter=",")
+            dataset_csv = csv.writer(open(dataset_file, "w", newline=""))
+            dataset_csv.writerows(dataset_reader)
+
+        # Load data and transform to Panda dataframe (skip first two lines in train and first line in validation)
+        test_data = pd.read_csv(dataset_file, header=None, skiprows=1)
+
+        # Load normalization parameters if necessary
+        train_data = open(dataset_file.replace("Testsets\\TesttDataset","Datasets\\TrainDataset"))
+        line = train_data.readline()
+        columns = line.split(":")[1].split(",")
+        mean  = []
+        std = []
+        for index,param in enumerate(columns):
+            if(index%2 == 0):
+                mean.append(float(param))
+            else:
+                std.append(float(param))
+        dataset.close()
+
+        # Validate network with the data
+        test_network(network_path, test_data, category, batch_size, mean, std, prediction_file)

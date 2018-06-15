@@ -1,16 +1,16 @@
 from dataset_generator_simple import generate_dataset_simple
 from dataset_generator_medium import generate_dataset_medium
-from dataset_generator_hard_test import generate_dataset_hard
+from dataset_generator_hard import generate_dataset_hard
 from datetime import datetime
 
 startTime = datetime.now()
 
-trainseries = [3000]
-datasets = ['Hard']#['Simple','Medium','Hard']
-categories = ['Change']#['Jump','Change','Regression']
-normalization = [False]#[False,True]
-one_hot_encoding = [False]#[False,True]
-parameters = [(normalization[0],one_hot_encoding[0])]#[(normalization[0],one_hot_encoding[0]),(normalization[1],one_hot_encoding[1])]
+trainseries = [3600,4000,8100]
+datasets = ['Simple','Medium','Hard']
+categories = ['Jump','Change','Regression']
+normalization = [False,True]
+one_hot_encoding = [False,True]
+parameters =  [(normalization[0],one_hot_encoding[0]),(normalization[1],one_hot_encoding[1])]
 realisation_path = "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RealisationData\\RealisationDataWithoutValidation.txt"
 validation_path = "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RealisationData\\Validationdata.txt"
 connections_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RollingStockConnectionsAll.txt"
@@ -48,10 +48,10 @@ for series in trainseries:
                         series, category, validation=True, normalization=param[0], one_hot_encoding=param[1])
 
                 elif(dataset == 'Hard'):
-                    # print("Creating trainingset for trainseries " + str(series))
-                    # generate_dataset_hard(
-                    #     realisation_path, connections_path, locations_path, composition_change_path, driver_change_path, route_path,
-                    #     timetable_path, series, category, validation=False, normalization=param[0], one_hot_encoding=param[1])
+                    print("Creating trainingset for trainseries " + str(series))
+                    generate_dataset_hard(
+                        realisation_path, connections_path, locations_path, composition_change_path, driver_change_path, route_path,
+                        timetable_path, series, category, validation=False, normalization=param[0], one_hot_encoding=param[1])
 
                     print("Creating validationset for trainseries " + str(series))
                     generate_dataset_hard(
