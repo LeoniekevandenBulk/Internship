@@ -8,12 +8,13 @@ from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, BatchNormalization
 from keras.optimizers import Adam, SGD
 from keras.callbacks import CSVLogger, ModelCheckpoint, ReduceLROnPlateau
-from sklearn.metrics import fbeta_score, mean_squared_error
-from batch_generator import get_databatch, get_testbatch, get_databatch2
+from sklearn.metrics import fbeta_score, mean_squared_error, accuracy_score, precision_score, recall_score
+from batch_generator import get_databatch, get_valbatch, get_databatch2, get_valbatch2, get_testbatch
 from matplotlib import pyplot
 
-def train_network(train_data, validation_data, category, dataset_type, batch_size, epochs, dataset_file, mean, std,
+def train_network(train_data, validation_data, category, dataset_type, trainseries, batch_size, epochs, dataset_file, mean, std,
                   normalization=True, augmentation=True, balance_batches=True):
+
     # Create Batch generators
     train_generator = get_databatch(train_data, mean, std, batch_size=batch_size, category=category, shuffle=True, normalization=normalization,
                                     augmentation=augmentation, balance_batches=balance_batches)
@@ -22,7 +23,7 @@ def train_network(train_data, validation_data, category, dataset_type, batch_siz
 
     # Determine path to save logger files, models and figures
     csv_logger_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\epoch_results.csv"
-    save_model_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\" + dataset_type + "_model.{epoch:02d}-{val_loss:.2f}.hdf5"
+    save_model_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\" + trainseries + "_" + dataset_type + "_model.{epoch:02d}-{val_loss:.2f}.hdf5"
     save_figure_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork_Figures\\" + category + \
                        "\\" + dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\", "").replace(".csv", "")
 
@@ -45,19 +46,29 @@ def train_network(train_data, validation_data, category, dataset_type, batch_siz
     input_dim = train_data.shape[1]-output_dim
 
     # Create network architecture
-    if(category=='Change' or category=='Jump'):
+    if(category=='Change'):
         model = Sequential()
         model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
         model.add(Dropout(0.5))
         model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
         model.add(Dense(output_dim, activation=last_activation))
-        model.compile(loss=loss,optimizer=Adam(lr=0.01),metrics=metrics)
-    else:
+        model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
+    if (category == 'Jump'):
         model = Sequential()
         model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+        model.add(Dropout(0.5))
         model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
         model.add(Dense(output_dim, activation=last_activation))
-        model.compile(loss=loss, optimizer=Adam(lr=0.001), metrics=metrics)
+        model.compile(loss=loss, optimizer=Adam(lr=0.01), metrics=metrics)
+    else:
+        model = Sequential() # TEST GROTERE EN KLEINERE NETWERKEN
+        model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+        model.add(Dropout(0.1))
+        model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
+        model.add(Dropout(0.1))
+        model.add(Dense(100, kernel_initializer='he_normal', activation='relu'))
+        model.add(Dense(output_dim, activation=last_activation))
+        model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
 
     # Train network
     csv_logger = CSVLogger(csv_logger_path)
@@ -92,15 +103,18 @@ def train_network(train_data, validation_data, category, dataset_type, batch_siz
     pyplot.savefig(save_figure_path + "-Loss.png")
 
 def validate_network(network_path, validation_data, category, batch_size, mean, std):
+
+    validation_data = validation_data.values
+
     # Load model
     model = load_model(network_path)
 
-    # Generator for predictions
-    prediction_generator = get_databatch(train_data, mean, std, batch_size=batch_size, category=category, shuffle=False, normalization=True,
-                                         augmentation=False, balance_batches=False)
+    prediction_generator = get_valbatch(validation_data, mean, std, batch_size=batch_size, category=category,
+                                          shuffle=False, normalization=True)
+
 
     # Predict labels for the validation data
-    val_steps = int(np.ceil(float(len(validation_data)) / float(batch_size)))
+    val_steps = int(np.ceil(float(validation_data.shape[0]) / float(batch_size)))
     preds = model.predict_generator(prediction_generator, val_steps)
     preds = preds[:len(validation_data)]
 
@@ -122,10 +136,31 @@ def validate_network(network_path, validation_data, category, batch_size, mean, 
         equal_label = (validation_labels[:,1]).astype(int)
         increase_label = (validation_labels[:,2]).astype(int)
 
-        # Decide predictions with a minimum probability of 0.5
-        decrease_pred = (preds[:,0] > 0.5).astype(int)
-        equal_pred = (preds[:,1] > 0.5).astype(int)
-        increase_pred = (preds[:,2] > 0.5).astype(int)
+        # Determine predictions by taking the highest value and setting it to 1 and the rest to 0
+        predictions = []
+        for pred in preds:
+            predictions.append([1 if x == max(pred) else 0 for x in pred])
+        predictions = np.array(predictions)
+
+        # Decide predictions per class
+        decrease_pred = predictions[:,0]
+        equal_pred = predictions[:,1]
+        increase_pred = predictions[:,2]
+
+        # Print accuracy
+        print('Accuracy decrease:' + str(accuracy_score(decrease_label, decrease_pred)))
+        print('Accuracy equal:' + str(accuracy_score(equal_label, equal_pred)))
+        print('Accuracy increase:' + str(accuracy_score(increase_label, increase_pred)) + "\n")
+
+        # Print precision
+        print('Precision decrease:' + str(precision_score(decrease_label, decrease_pred)))
+        print('Precision equal:' + str(precision_score(equal_label, equal_pred)))
+        print('Precision increase:' + str(precision_score(increase_label, increase_pred)) + "\n")
+
+        # Print recall
+        print('Recall decrease:' + str(recall_score(decrease_label, decrease_pred)))
+        print('Recall equal:' + str(recall_score(equal_label, equal_pred)))
+        print('Recall increase:' + str(recall_score(increase_label, increase_pred)) + "\n")
 
         # Print f1 scores
         print('F1 score decrease: ' + str(fbeta_score(decrease_label, decrease_pred, 1)))
@@ -139,8 +174,18 @@ def validate_network(network_path, validation_data, category, batch_size, mean, 
         # Decide predictions (under 0.5 is no_jump, over 0.5 is jump)
         jump_pred = (preds[:,0] > 0.5).astype(int)
 
+        # Print accuracy
+        print('Accuracy no jump/jump:' + str(accuracy_score(validation_labels, jump_pred)))
+
+        # Print precision
+        print('Precision decrease:' + str(precision_score(validation_labels, jump_pred)))
+
+        # Print recall
+        print('Recall decrease:' + str(recall_score(validation_labels, jump_pred)))
+
         # Print f1 scores
         print('F1 score no jump/jump: ' + str(fbeta_score(validation_labels, jump_pred, 1)))
+
 
 def test_network(network_path, test_data, category, batch_size, mean, std, prediction_file):
     # Load model
@@ -168,20 +213,22 @@ if __name__ == "__main__":
 
     # Set important training parameters
     trainseries = '3000'
-    category = 'Change'
-    dataset_type = 'Simple'
-    batch_size = 32
-    epochs = 20
+    category = 'Regression'
+    dataset_type = 'Medium'
+    batch_size = 64
+    epochs = 25
     balance_batches = True
-    normalization = True
-    augmentation = True
+    normalization = False
+    augmentation = False
 
     # Set this to the network file if you want to validate or test
-    network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\FILLIN.hdf5"
+    #network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\NoNormalizationNoAugmentationSimple_model.17-0.56.hdf5"
+    #network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\DivisionNormalizationSimple_model.02-0.19.hdf5"
+    #network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\NormalizationSimple_model.03-0.35.hdf5"
 
     if(train):
         # Set datafile
-        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
+        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-True_Model-" + dataset_type + ".csv"
 
         # Check if CSV already exists, else create csv from txt
         if(not(Path(dataset_file).is_file())):
@@ -195,12 +242,13 @@ if __name__ == "__main__":
             validation_csv.writerows(validation_reader)
 
         # Load data and transform to Panda dataframe (skip first two lines in train and first line in validation)
-        train_data = pd.read_csv(dataset_file, header=None, skiprows=1)
+        train_data = pd.read_csv(dataset_file, header=None, skiprows=2)
         validation_data = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"), header=None, skiprows=1)
 
         # Load normalization parameters if necessary
-        normalization_dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
-        dataset = open(normalization_dataset_file)
+        #normalization_dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
+        #dataset = open(normalization_dataset_file)
+        dataset = open(dataset_file)
         line = dataset.readline()
         columns = line.split(":")[1].split(",")
         mean  = []
@@ -215,12 +263,12 @@ if __name__ == "__main__":
         ####################
 
         # Train network with the data
-        train_network(train_data, validation_data, category, dataset_type, batch_size, epochs, dataset_file, mean, std,
+        train_network(train_data, validation_data, category, dataset_type, trainseries, batch_size, epochs, dataset_file, mean, std,
                       normalization=normalization, augmentation=augmentation, balance_batches=balance_batches)
 
     if (validate):
         # Set datafile
-        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".csv"
+        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\ValidationDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-True_Model-" + dataset_type + ".csv"
 
         # Check if CSV already exists, else create csv from txt
         if (not (Path(dataset_file).is_file())):
@@ -229,12 +277,12 @@ if __name__ == "__main__":
             dataset_csv = csv.writer(open(dataset_file, "w", newline=""))
             dataset_csv.writerows(dataset_reader)
 
-        # Load data and transform to Panda dataframe (skip first two lines in train and first line in validation)
+        # Load data and transform to Panda dataframe (skip first line in validation)
         validation_data = pd.read_csv(dataset_file, header=None, skiprows=1)
 
         # Load normalization parameters if necessary
-        train_data = open(dataset_file.replace("ValidationDataset","TrainDataset"))
-        line = train_data.readline()
+        dataset = open(dataset_file.replace("ValidationDataset","TrainDataset"))
+        line = dataset.readline()
         columns = line.split(":")[1].split(",")
         mean  = []
         std = []
@@ -264,8 +312,7 @@ if __name__ == "__main__":
         test_data = pd.read_csv(dataset_file, header=None, skiprows=1)
 
         # Load normalization parameters if necessary
-        train_data = open(dataset_file.replace("Testsets\\TesttDataset","Datasets\\TrainDataset"))
-        line = train_data.readline()
+        dataset = open(dataset_file.replace("Testsets\\TesttDataset","Datasets\\TrainDataset"))
         columns = line.split(":")[1].split(",")
         mean  = []
         std = []

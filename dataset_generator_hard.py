@@ -903,7 +903,7 @@ def generate_dataset_hard(realisation_path, connections_path, trainseries_locati
         dataset = open(file_name, "w")
 
     # Calculate parameters for the optional normalization and write them to file (also needed for validation/testing)
-    if(normalization and not validation):
+    if(not validation):
         normalization_columns = []
         mean = np.mean(current_delay_array)
         normalization_columns.append(mean)

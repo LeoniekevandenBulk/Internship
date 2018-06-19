@@ -5,12 +5,12 @@ from datetime import datetime
 
 startTime = datetime.now()
 
-trainseries = [3600,4000,8100]
+trainseries = [3000,3600,4000,8100]
 datasets = ['Simple','Medium','Hard']
 categories = ['Jump','Change','Regression']
-normalization = [False,True]
+normalization = [False]
 one_hot_encoding = [False,True]
-parameters =  [(normalization[0],one_hot_encoding[0]),(normalization[1],one_hot_encoding[1])]
+parameters =  [(normalization[0],one_hot_encoding[1])]#[(normalization[0],one_hot_encoding[0]),(normalization[0],one_hot_encoding[1])]
 realisation_path = "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RealisationData\\RealisationDataWithoutValidation.txt"
 validation_path = "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RealisationData\\Validationdata.txt"
 connections_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RollingStockConnectionsAll.txt"

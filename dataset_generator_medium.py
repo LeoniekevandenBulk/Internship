@@ -506,7 +506,7 @@ def generate_dataset_medium(realisation_path, connections_path, trainseries_loca
         dataset = open(file_name, "w")
 
     # Calculate parameters for the optional normalization and write them to file (also needed for validation/testing)
-    if(normalization and not validation):
+    if(not validation):
         mean = np.mean(current_delay_array)
         std = np.std(current_delay_array)
         previous_mean = np.mean(previous_delay_array)
