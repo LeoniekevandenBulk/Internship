@@ -213,7 +213,7 @@ def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encodi
         validation_csv.writerows(validation_reader)
 
     # Load data and transform to Panda dataframe
-    train = pd.read_csv(dataset_file)
+    train = pd.read_csv(dataset_file, skiprows=1)
     validation = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"))
     target = "Future_Delay"
     predictors = [x for x in train.columns if not (x == target)]

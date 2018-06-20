@@ -46,29 +46,48 @@ def train_network(train_data, validation_data, category, dataset_type, trainseri
     input_dim = train_data.shape[1]-output_dim
 
     # Create network architecture
-    if(category=='Change'):
-        model = Sequential()
-        model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dropout(0.5))
-        model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dense(output_dim, activation=last_activation))
-        model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
-    if (category == 'Jump'):
-        model = Sequential()
-        model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dropout(0.5))
-        model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dense(output_dim, activation=last_activation))
-        model.compile(loss=loss, optimizer=Adam(lr=0.01), metrics=metrics)
-    else:
-        model = Sequential() # TEST GROTERE EN KLEINERE NETWERKEN
-        model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dropout(0.1))
-        model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dropout(0.1))
-        model.add(Dense(100, kernel_initializer='he_normal', activation='relu'))
-        model.add(Dense(output_dim, activation=last_activation))
-        model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
+    if(dataset_type == "Simple" or dataset_type == "Medium"):
+        if(category=='Change'):
+            model = Sequential()
+            model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dropout(0.5))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dense(output_dim, activation=last_activation))
+            model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
+        if(category == 'Jump'):
+            model = Sequential()
+            model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dropout(0.5))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+            model.add(Dense(output_dim, activation=last_activation))
+            model.compile(loss=loss, optimizer=Adam(lr=0.01), metrics=metrics)
+        if(category == 'Regression'):
+            model = Sequential()
+            model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dense(output_dim, activation=last_activation))
+            model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
+    elif(dataset_type == "Hard"):
+        if(category=='Change'):
+            model = Sequential()
+            model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dropout(0.5))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dense(output_dim, activation=last_activation))
+            model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
+        if(category == 'Jump'):
+            model = Sequential()
+            model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dropout(0.5))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+            model.add(Dense(output_dim, activation=last_activation))
+            model.compile(loss=loss, optimizer=Adam(lr=0.001), metrics=metrics)
+        if(category == 'Regression'):
+            model = Sequential()
+            model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dense(output_dim, activation=last_activation))
+            model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
 
     # Train network
     csv_logger = CSVLogger(csv_logger_path)
@@ -213,13 +232,17 @@ if __name__ == "__main__":
 
     # Set important training parameters
     trainseries = '3000'
-    category = 'Regression'
-    dataset_type = 'Medium'
+    category = 'Jump'
+    dataset_type = 'Hard'
     batch_size = 64
     epochs = 25
-    balance_batches = True
     normalization = False
     augmentation = False
+
+    if(category=='Regression'):
+        balance_batches = False
+    else:
+        balance_batches = True
 
     # Set this to the network file if you want to validate or test
     #network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\NoNormalizationNoAugmentationSimple_model.17-0.56.hdf5"

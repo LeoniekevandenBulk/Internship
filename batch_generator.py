@@ -89,10 +89,17 @@ def get_databatch2(data, mean, std, batch_size=32, category='Regression', shuffl
                 if(normalization):
                     entry[5] = entry[5]/10
                     entry[6] = entry[6]/10
+                    entry[-1] = entry[-1]/10
 
+                    # For medium and hard model
+                    if(len(mean) > 1):
+                        entry[-2] = entry[-2]/10
+                        entry[-3] = entry[-3]/10
+
+                    # For hard model
                     if(len(mean) > 3):
                         for x in range(len(mean)-1,2,-1):
-                            entry[x-(len(mean)+3)] = (entry[x-(len(mean)+3)] -  mean[x]) / std[x]
+                            entry[x - (len(mean) + 3)] = entry[x - (len(mean) + 3)]/10
 
                 entry_batch[j] = entry
                 label_batch[j] = label
@@ -162,12 +169,16 @@ def get_databatch(data, mean, std, batch_size=32, category='Regression', shuffle
 
                 # Augmentation by adding or subtracting one minute from the entries with a delay > 0
                 if(augmentation):
-                    plus_one = random.uniform(0, 1)
-                    minus_one = random.uniform(0, 1)
-                    if (plus_one <= 0.05):# and not (entry[-1] == 0)):
-                        entry[-1] += 1
+                    # plus_one = random.uniform(0, 1)
+                    # minus_one = random.uniform(0, 1)
+                    # if (plus_one <= 0.05):# and not (entry[-1] == 0)):
+                    #     entry[-1] += 1
                     # if(minus_one <= 0.25 and not(entry[-1] == 0)):
                     #     entry[-1] -= 1
+                    for i in range(2):
+                        r = random.randint(8,len(entry)-4)
+                        entry[r] += 1
+
 
                 # Add normalization on the fly as it otherwise interferes with the augmentation (assumes one-hot encoding)
                 if(normalization):
@@ -183,7 +194,10 @@ def get_databatch(data, mean, std, batch_size=32, category='Regression', shuffle
                     # For hard model
                     if(len(mean) > 3):
                         for x in range(len(mean)-1,2,-1):
-                            entry[x-(len(mean)+3)] = (entry[x-(len(mean)+3)] -  mean[x]) / std[x]
+                            if(std[x] == 0 and mean[x] == 0):
+                                entry[x - (len(mean) + 3)] = -1
+                            else:
+                                entry[x - (len(mean) + 3)] = (entry[x - (len(mean) + 3)] - mean[x]) / std[x]
 
                 entry_batch[j] = entry
                 label_batch[j] = label
@@ -224,10 +238,17 @@ def get_valbatch2(data, mean, std, batch_size=32, category='Regression', shuffle
                 if(normalization):
                     entry[5] = entry[5]/10
                     entry[6] = entry[6]/10
-                    #entry[-1] = entry[-1] / 10
+                    entry[-1] = entry[-1]/10
+
+                    # For medium and hard model
+                    if(len(mean) > 1):
+                        entry[-2] = entry[-2]/10
+                        entry[-3] = entry[-3]/10
+
+                    # For hard model
                     if(len(mean) > 3):
                         for x in range(len(mean)-1,2,-1):
-                            entry[x-(len(mean)+3)] = (entry[x-(len(mean)+3)] -  mean[x]) / std[x]
+                            entry[x - (len(mean) + 3)] = entry[x - (len(mean) + 3)]/10
 
                 entry_batch[j] = entry
 
@@ -277,7 +298,11 @@ def get_valbatch(data, mean, std, batch_size=32, category='Regression', shuffle=
                     # For hard model
                     if(len(mean) > 3):
                         for x in range(len(mean)-1,2,-1):
-                            entry[x-(len(mean)+3)] = (entry[x-(len(mean)+3)] -  mean[x]) / std[x]
+                            if(std[x] == 0 and mean[x] == 0):
+                                entry[x - (len(mean) + 3)] = -1
+                            else:
+                                entry[x - (len(mean) + 3)] = (entry[x - (len(mean) + 3)] - mean[x]) / std[x]
+
                 entry_batch[j] = entry
 
                 j += 1
