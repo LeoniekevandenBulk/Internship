@@ -71,12 +71,12 @@ def find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_enco
 
     # Set different values for the parameters to test to find the best model
     test_params = {
-        'max_depth': [3,4,5],
+        'max_depth': [7,8,9],
         'min_child_weight': [3,5,7],
-        'gamma': [0,0.2,0.4],
-        'reg_alpha': [0.001, 0.01, 0.1],
-        'learning_rate': [0.01, 0.1, 0.2],
-        'scale_pos_weight': [1,3,5]
+        'gamma': [0],
+        'reg_alpha': [0.01,0.1],
+        'learning_rate': [0.1],
+        'scale_pos_weight': [1]
     }
 
     if(category == 'Change' or category == 'Jump'):
@@ -90,8 +90,8 @@ def find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_enco
         xgb =  GridSearchCV(estimator = XGBClassifier(
             learning_rate=0.1,
             n_estimators=1000,
-            max_depth=5,
-            min_child_weight=1,
+            max_depth=7,
+            min_child_weight=3,
             gamma=0,
             subsample=0.8,
             colsample_bytree=0.8,
@@ -300,7 +300,7 @@ def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encodi
                         dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","")
 
             # Plot feature importance
-            plot_importance(best_xgb)
+            plot_importance(best_xgb, max_num_features=10)
             pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
 
             # # Plot final decision tree
@@ -350,14 +350,14 @@ def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encodi
 
         # Predict on validation set and print accuracy
         predictions = best_xgb.predict(validation_features)
-        rmse = math.sqrt(metrics.mean_squared_error(validation_labels.values, predictions))
-        print("Root Mean squared error: %.4g" % rmse)
+        mse = metrics.mean_squared_error(validation_labels.values, predictions)
+        print("Mean squared error: %.4g" % mse)
 
         # Pickle and save best model and training figures
         save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\" + \
                           dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\",
                                                "").replace(".csv", "") \
-                          + str(rmse) + ".dat"
+                          + str(mse) + ".dat"
         pickle.dump(best_xgb, open(save_path_model, "wb"))
 
         if (save_figures):
@@ -445,8 +445,6 @@ def test_XGB(model_path, testset_file, prediction_file, category, categorical_la
         with open(prediction_file,"w") as file:
             for pred in predictions:
                 file.write(pred + "\n")
-
-
     else:
         # Make XGBoost classifier with the best found parameters
         best_xgb = XGBRegressor(
@@ -475,29 +473,29 @@ def test_XGB(model_path, testset_file, prediction_file, category, categorical_la
 
 
 if __name__== "__main__":
-    find_parameters = False
-    train = True
+    find_parameters = True
+    train = False
     test = False
 
     # Set important training parameters
     trainseries = '3000'
     category = 'Change'
-    dataset_type = 'Medium'
+    dataset_type = 'Hard'
     categorical_labels = ["Day", "Location"]
     dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
     testset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
     prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\XGBoost\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
 
     # Set this if you want to test with an existing XGB model
-    RMSE = 0
+    MSE = 0
     XGB_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + \
-                                                str(RMSE) + ".dat"
+                                                str(MSE) + ".dat"
 
     if(find_parameters):
         find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_encoding=False, sparse=False)
 
     if(train):
-        params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.01, 'scale_pos_weight': 1}
+        params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 5, 'reg_alpha': 0.1, 'scale_pos_weight': 1}
         train_XGB(dataset_file, category, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
 
     if(test):
