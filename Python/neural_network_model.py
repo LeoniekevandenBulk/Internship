@@ -76,10 +76,15 @@ def train_network(train_data, validation_data, category, dataset_type, trainseri
             model.add(Dense(output_dim, activation=last_activation))
             model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
         if(category == 'Jump'):
+            print("Hier")
             model = Sequential()
             model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-            model.add(Dropout(0.5))
-            model.add(Dense(200, kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+            model.add(Dropout(0.7))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.1)))
+            model.add(Dropout(0.7))
+            model.add(Dense(100, kernel_initializer='he_normal', activation='relu', kernel_regularizer=regularizers.l2(0.1)))
+            model.add(Dropout(0.7))
+            model.add(Dense(50, kernel_initializer='he_normal', activation='relu', kernel_regularizer=regularizers.l2(0.1)))
             model.add(Dense(output_dim, activation=last_activation))
             model.compile(loss=loss, optimizer=Adam(lr=0.001), metrics=metrics)
         if(category == 'Regression'):

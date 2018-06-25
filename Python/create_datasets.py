@@ -6,9 +6,9 @@ from datetime import datetime
 def create_train_and_validation_set():
     startTime = datetime.now()
 
-    trainseries = [3000,3600,4000,8100]
-    datasets = ['Simple','Medium','Hard']
-    categories = ['Jump','Change','Regression']
+    trainseries = [7300]#[3000, 3600, 4000, 8100]
+    datasets = ['Simple']#['Simple', 'Medium', 'Hard']
+    categories = ['Jump']#['Jump', 'Change', 'Regression']
     normalization = [False]
     one_hot_encoding = [False,True]
     parameters =  [(normalization[0],one_hot_encoding[0]),(normalization[0],one_hot_encoding[1])]
@@ -110,5 +110,5 @@ def create_test_set():
 
 
 if __name__ == "__main__":
-    #create_train_and_validation_set()
-    create_test_set()
+    create_train_and_validation_set()
+    #create_test_set()
