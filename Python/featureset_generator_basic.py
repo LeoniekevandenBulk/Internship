@@ -79,8 +79,8 @@ def list_trainseries_locations(trainseries, trainseries_locations_path):
     return locations
 
 
-# Generate dataset to train on from realisation data
-def generate_dataset_simple(realisation_path, connections_path, trainseries_locations_path, route_path, trainseries, category,
+# Generate feature set to train on from realisation data
+def generate_featureset(realisation_path, connections_path, trainseries_locations_path, route_path, trainseries, category,
                             validation=False, normalization=True, one_hot_encoding=False):
     # Open file to read from
     realisation_data = open(realisation_path, "r")
@@ -438,8 +438,8 @@ def generate_dataset_simple(realisation_path, connections_path, trainseries_loca
     realisation_data.close()
     dataset.close()
 
-
-def generate_testset_simple(testset_path, to_predict_path, connections_path, trainseries_locations_path, route_path, trainseries, category,
+# Generate test feature set
+def generate_testset(testset_path, to_predict_path, connections_path, trainseries_locations_path, route_path, trainseries, category,
                             validation=True, normalization=True, one_hot_encoding=False):
     # Open file to read from
     testset_data = open(testset_path, "r")

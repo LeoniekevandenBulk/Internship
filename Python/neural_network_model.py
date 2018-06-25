@@ -9,7 +9,7 @@ from keras.layers import Dense, Dropout, BatchNormalization
 from keras.optimizers import Adam, SGD
 from keras.callbacks import CSVLogger, ModelCheckpoint, ReduceLROnPlateau
 from sklearn.metrics import fbeta_score, mean_squared_error, accuracy_score, precision_score, recall_score
-from batch_generator import get_databatch, get_valbatch, get_databatch2, get_valbatch2, get_testbatch
+from Python.batch_generator import get_databatch, get_valbatch, get_databatch2, get_valbatch2, get_testbatch
 from matplotlib import pyplot
 
 def train_network(train_data, validation_data, category, dataset_type, trainseries, batch_size, epochs, dataset_file, mean, std,

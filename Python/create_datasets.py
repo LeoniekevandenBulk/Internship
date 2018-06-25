@@ -1,14 +1,14 @@
-from dataset_generator_simple import generate_dataset_simple, generate_testset_simple
-from dataset_generator_medium import generate_dataset_medium, generate_testset_medium
-from dataset_generator_hard import generate_dataset_hard, generate_testset_hard
+import Python.featureset_generator_basic as simple
+import Python.featureset_generator_compositiondriverchanges as medium
+import Python.featureset_generator_interactingtrains as hard
 from datetime import datetime
 
 def create_train_and_validation_set():
     startTime = datetime.now()
 
-    trainseries = [7300]#[3000, 3600, 4000, 8100]
-    datasets = ['Simple']#['Simple', 'Medium', 'Hard']
-    categories = ['Jump']#['Jump', 'Change', 'Regression']
+    trainseries = [3000, 3600, 4000, 8100]
+    datasets = ['Simple', 'Medium', 'Hard']
+    categories = ['Jump', 'Change', 'Regression']
     normalization = [False]
     one_hot_encoding = [False,True]
     parameters =  [(normalization[0],one_hot_encoding[0]),(normalization[0],one_hot_encoding[1])]
@@ -28,34 +28,34 @@ def create_train_and_validation_set():
 
                     if(dataset == 'Simple'):
                         print("Creating trainingset for trainseries " + str(series))
-                        generate_dataset_simple(
+                        simple.generate_featureset(
                             realisation_path, connections_path, locations_path, route_path, series, category,
                             validation=False,normalization=param[0],one_hot_encoding=param[1])
 
                         print("Creating validationset for trainseries " + str(series))
-                        generate_dataset_simple(
+                        simple.generate_featureset(
                             validation_path, connections_path, locations_path, route_path, series, category,
                             validation=True,normalization=param[0],one_hot_encoding=param[1])
 
                     elif(dataset == 'Medium'):
                         print("Creating trainingset for trainseries " + str(series))
-                        generate_dataset_medium(
+                        medium.generate_featureset(
                             realisation_path, connections_path, locations_path, composition_change_path, driver_change_path, route_path,
                             series, category, validation=False, normalization=param[0], one_hot_encoding=param[1])
 
                         print("Creating validationset for trainseries " + str(series))
-                        generate_dataset_medium(
+                        medium.generate_featureset(
                             validation_path, connections_path, locations_path, composition_change_path, driver_change_path, route_path,
                             series, category, validation=True, normalization=param[0], one_hot_encoding=param[1])
 
                     elif(dataset == 'Hard'):
                         print("Creating trainingset for trainseries " + str(series))
-                        generate_dataset_hard(
+                        hard.generate_featureset(
                             realisation_path, connections_path, locations_path, composition_change_path, driver_change_path, route_path,
                             timetable_path, series, category, validation=False, normalization=param[0], one_hot_encoding=param[1])
 
                         print("Creating validationset for trainseries " + str(series))
-                        generate_dataset_hard(
+                        hard.generate_featureset(
                             validation_path, connections_path, locations_path, composition_change_path, driver_change_path, route_path,
                             timetable_path, series, category, validation=True, normalization=param[0], one_hot_encoding=param[1])
 
@@ -87,20 +87,20 @@ def create_test_set():
 
                     if (dataset == 'Simple'):
                         print("Creating testset for trainseries " + str(series))
-                        generate_testset_simple(
+                        simple.generate_testset(
                             testset_path, to_predict_path, connections_path, locations_path, route_path, series, category,
                             validation=True, normalization=param[0], one_hot_encoding=param[1])
 
                     elif (dataset == 'Medium'):
                         print("Creating trainingset for trainseries " + str(series))
-                        generate_testset_medium(
+                        medium.generate_testset(
                             testset_path, to_predict_path, connections_path, locations_path, composition_change_path,
                             driver_change_path, route_path,
                             series, category, validation=True, normalization=param[0], one_hot_encoding=param[1])
 
                     elif (dataset == 'Hard'):
                         print("Creating trainingset for trainseries " + str(series))
-                        generate_testset_hard(
+                        hard.generate_testset(
                             testset_path, to_predict_path, connections_path, locations_path, composition_change_path,
                             driver_change_path, route_path,
                             timetable_path, series, category, validation=True, normalization=param[0],
