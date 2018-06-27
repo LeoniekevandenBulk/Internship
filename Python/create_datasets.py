@@ -6,12 +6,12 @@ from datetime import datetime
 def create_train_and_validation_set():
     startTime = datetime.now()
 
-    trainseries = [3000, 3600, 4000, 8100]
+    trainseries = [3000]
     datasets = ['Simple', 'Medium', 'Hard']
     categories = ['Jump', 'Change', 'Regression']
     normalization = [False]
     one_hot_encoding = [False,True]
-    parameters =  [(normalization[0],one_hot_encoding[0]),(normalization[0],one_hot_encoding[1])]
+    parameters =  [(normalization[0],one_hot_encoding[0])] #[(normalization[0],one_hot_encoding[0]),(normalization[0],one_hot_encoding[1])]
     realisation_path = "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RealisationData\\RealisationDataWithoutValidation.txt"
     validation_path = "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RealisationData\\Validationdata.txt"
     connections_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RollingStockConnectionsAll.txt"
@@ -65,7 +65,7 @@ def create_train_and_validation_set():
 def create_test_set():
     startTime = datetime.now()
 
-    trainseries = [3000, 3600, 4000, 8100]
+    trainseries = [3000]
     datasets = ['Simple', 'Medium', 'Hard']
     categories = ['Jump', 'Change', 'Regression']
     normalization = [False]

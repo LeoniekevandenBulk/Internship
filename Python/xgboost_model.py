@@ -1,6 +1,7 @@
 #Import libraries:
 import csv
 import math
+import time
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -14,17 +15,6 @@ import pickle
 
 # Function to find the best XGB parameters on a dataset by testing multiple sets of parameters, picking the best set and outputting performance of this set
 def find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_encoding=True, sparse=True):
-
-    # Check if CSV already exists, else create csv from txt
-    if(not(Path(dataset_file).is_file())):
-        dataset_txt = dataset_file.replace("csv","txt")
-        validation_txt = dataset_txt.replace("TrainDataset","ValidationDataset")
-        dataset_reader = csv.reader(open(dataset_txt,"r"), delimiter = ",")
-        dataset_csv = csv.writer(open(dataset_file,"w",newline=""))
-        dataset_csv.writerows(dataset_reader)
-        validation_reader = csv.reader(open(validation_txt,"r"), delimiter = ",")
-        validation_csv = csv.writer(open(dataset_file.replace("TrainDataset","ValidationDataset"),"w", newline=""))
-        validation_csv.writerows(validation_reader)
 
     # Load data and transform to Panda dataframe
     train = pd.read_csv(dataset_file, skiprows=1)
@@ -135,7 +125,7 @@ def find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_enco
         # Pickle and save best model and training figures
         save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\" + \
                     dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","") \
-                    + ".dat"
+                    + ".pkl"
         pickle.dump(best_xgb,open(save_path_model,"wb"))
 
         # Predict on validation set and print accuracy
@@ -200,17 +190,6 @@ def find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_enco
 
 # Function to train the XGB on a dataset with the best parameters for this problem
 def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encoding=True, sparse=True, save_figures=True):
-
-    # Check if CSV already exists, else create csv from txt
-    if(not(Path(dataset_file).is_file())):
-        dataset_txt = dataset_file.replace("csv","txt")
-        validation_txt = dataset_txt.replace("TrainDataset","ValidationDataset")
-        dataset_reader = csv.reader(open(dataset_txt,"r"), delimiter = ",")
-        dataset_csv = csv.writer(open(dataset_file,"w",newline=""))
-        dataset_csv.writerows(dataset_reader)
-        validation_reader = csv.reader(open(validation_txt,"r"), delimiter = ",")
-        validation_csv = csv.writer(open(dataset_file.replace("TrainDataset","ValidationDataset"),"w", newline=""))
-        validation_csv.writerows(validation_reader)
 
     # Load data and transform to Panda dataframe
     train = pd.read_csv(dataset_file, skiprows=1)
@@ -300,7 +279,7 @@ def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encodi
                         dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\","").replace(".csv","")
 
             # Plot feature importance
-            plot_importance(best_xgb, max_num_features=10)
+            plot_importance(best_xgb, max_num_features=15)
             pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
 
             # # Plot final decision tree
@@ -357,7 +336,7 @@ def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encodi
         save_path_model = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\" + \
                           dataset_file.replace("C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\",
                                                "").replace(".csv", "") \
-                          + str(mse) + ".dat"
+                          + str(mse) + ".pkl"
         pickle.dump(best_xgb, open(save_path_model, "wb"))
 
         if (save_figures):
@@ -367,7 +346,7 @@ def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encodi
                                                     "").replace(".csv", "")
 
             # Plot feature importance
-            plot_importance(best_xgb)
+            plot_importance(best_xgb, max_num_features=15)
             pyplot.savefig(save_path_figure + "-ImporantFeatures.png")
 
             # # Plot final decision tree
@@ -391,18 +370,12 @@ def train_XGB(dataset_file, category, categorical_labels, params, one_hot_encodi
             pyplot.savefig(save_path_figure + "-RMSE.png")
 
 # Function to test the XGBoost on a dataset with a trained XGBoost model
-def test_XGB(model_path, testset_file, prediction_file, category, categorical_labels, params, one_hot_encoding=True, sparse=True):
-
-    # Check if CSV already exists, else create csv from txt
-    if(not(Path(testset_file).is_file())):
-        testset_txt = testset_file.replace("csv","txt")
-        testset_reader = csv.reader(open(testset_txt,"r"), delimiter = ",")
-        testset_csv = csv.writer(open(testset_file,"w",newline=""))
-        testset_csv.writerows(testset_reader)
+def test_XGB(model_path, testset_file, prediction_file, categorical_labels, one_hot_encoding=True, sparse=True):
 
     # Load data and transform to Panda dataframe
     test = pd.read_csv(testset_file)
-    predictors = [x for x in test.columns]
+    target = "Future_Delay"
+    predictors = [x for x in test.columns if not (x == target)]
     test_data = test[predictors]
 
     # If desired, transform categorical data in to one hot encoding and potentially sparse matrices
@@ -428,48 +401,16 @@ def test_XGB(model_path, testset_file, prediction_file, category, categorical_la
     else:
         test_features = test_data
 
-    if(category == 'Change' or category == 'Jump'):
-        # Set number of classes
-        if(category == 'Change'):
-            nr_of_classes = 3
-        else:
-            nr_of_classes = 2
+    # Load XGBoost classifier
+    best_xgb = pickle.load(open(model_path,"rb"))
 
-        # Load XGBoost classifier
-        best_xgb = pickle.load(open(model_path,"rb"))
+    # Predict test set
+    predictions = best_xgb.predict(test_features)
 
-        # Predict test set
-        predictions = best_xgb.predict(test_features)
-
-        # Write predictions to file
-        with open(prediction_file,"w") as file:
-            for pred in predictions:
-                file.write(pred + "\n")
-    else:
-        # Make XGBoost classifier with the best found parameters
-        best_xgb = XGBRegressor(
-            objective='reg:linear',
-            booster='gbtree',
-            learning_rate=params["learning_rate"],
-            n_estimators=1000,
-            max_depth=params["max_depth"],
-            min_child_weight=params["min_child_weight"],
-            gamma=params["gamma"],
-            subsample=0.8,
-            colsample_bytree=0.8,
-            reg_alpha=params["reg_alpha"],
-            seed=42)
-
-        # Load XGBoost classifier
-        best_xgb = pickle.load(open(model_path,"rb"))
-
-        # Predict test set
-        predictions = best_xgb.predict(test_features)
-
-        # Write predictions to file
-        with open(prediction_file,"w") as file:
-            for pred in predictions:
-                file.write(pred + "\n")
+    # Write predictions to file
+    with open(prediction_file,"w") as file:
+        for pred in predictions:
+            file.write(str(pred) + "\n")
 
 
 if __name__== "__main__":
@@ -479,24 +420,59 @@ if __name__== "__main__":
 
     # Set important training parameters
     trainseries = '3000'
-    category = 'Change'
+    category = 'Regression'
     dataset_type = 'Hard'
     categorical_labels = ["Day", "Location"]
     dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
     testset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
-    prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\XGBoost\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
+    prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\XGBoost\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".txt"
 
     # Set this if you want to test with an existing XGB model
-    MSE = 0
+    MSE = 2.110665998263116
     XGB_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\XGBoost\\" + category + "\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + \
-                                                str(MSE) + ".dat"
-
+                                                str(MSE) + ".pkl"
     if(find_parameters):
+        # Check if CSV already exists, else create csv from txt
+        if (not (Path(dataset_file).is_file())):
+            dataset_txt = dataset_file.replace("csv", "txt")
+            validation_txt = dataset_txt.replace("TrainDataset", "ValidationDataset")
+            dataset_reader = csv.reader(open(dataset_txt, "r"), delimiter=",")
+            dataset_csv = csv.writer(open(dataset_file, "w", newline=""))
+            dataset_csv.writerows(dataset_reader)
+            validation_reader = csv.reader(open(validation_txt, "r"), delimiter=",")
+            validation_csv = csv.writer(
+                open(dataset_file.replace("TrainDataset", "ValidationDataset"), "w", newline=""))
+            validation_csv.writerows(validation_reader)
+
+        # Find best best parameters for this dataset
         find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_encoding=False, sparse=False)
 
     if(train):
-        params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 5, 'reg_alpha': 0.1, 'scale_pos_weight': 1}
+        # Check if CSV already exists, else create csv from txt
+        if (not (Path(dataset_file).is_file())):
+            dataset_txt = dataset_file.replace("csv", "txt")
+            validation_txt = dataset_txt.replace("TrainDataset", "ValidationDataset")
+            dataset_reader = csv.reader(open(dataset_txt, "r"), delimiter=",")
+            dataset_csv = csv.writer(open(dataset_file, "w", newline=""))
+            dataset_csv.writerows(dataset_reader)
+            validation_reader = csv.reader(open(validation_txt, "r"), delimiter=",")
+            validation_csv = csv.writer(
+                open(dataset_file.replace("TrainDataset", "ValidationDataset"), "w", newline=""))
+            validation_csv.writerows(validation_reader)
+
+        # Apply parameters below to dataset
+        params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.1, 'scale_pos_weight': 1}
         train_XGB(dataset_file, category, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
 
     if(test):
-        test_XGB(XGB_path, testset_file, prediction_file, category, categorical_labels, one_hot_encoding=False, sparse=False)
+        # Check if CSV already exists, else create csv from txt
+        if (not (Path(testset_file).is_file())):
+            testset_txt = testset_file.replace("csv", "txt")
+            with open(testset_txt, "r") as t:
+                testset_reader = csv.reader(t, delimiter=",")
+                with open(testset_file, "w", newline="") as t:
+                    testset_csv = csv.writer(t)
+                    testset_csv.writerows(testset_reader)
+
+        # Test model with given testset file
+        test_XGB(XGB_path, testset_file, prediction_file, categorical_labels, one_hot_encoding=False, sparse=False)

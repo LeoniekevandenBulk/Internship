@@ -71,12 +71,15 @@ def train_network(train_data, validation_data, category, dataset_type, trainseri
         if(category=='Change'):
             model = Sequential()
             model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-            model.add(Dropout(0.5))
-            model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dropout(0.7))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+            model.add(Dropout(0.7))
+            model.add(Dense(100, kernel_initializer='he_normal', activation='relu', kernel_regularizer=regularizers.l2(0.01)))
+            model.add(Dropout(0.7))
+            model.add(Dense(50, kernel_initializer='he_normal', activation='relu', kernel_regularizer=regularizers.l2(0.01)))
             model.add(Dense(output_dim, activation=last_activation))
-            model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
+            model.compile(loss=loss, optimizer=Adam(lr=0.001), metrics=metrics)
         if(category == 'Jump'):
-            print("Hier")
             model = Sequential()
             model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
             model.add(Dropout(0.7))
@@ -86,13 +89,18 @@ def train_network(train_data, validation_data, category, dataset_type, trainseri
             model.add(Dropout(0.7))
             model.add(Dense(50, kernel_initializer='he_normal', activation='relu', kernel_regularizer=regularizers.l2(0.1)))
             model.add(Dense(output_dim, activation=last_activation))
-            model.compile(loss=loss, optimizer=Adam(lr=0.001), metrics=metrics)
+            model.compile(loss=loss, optimizer=Adam(lr=0.01), metrics=metrics)
         if(category == 'Regression'):
             model = Sequential()
             model.add(Dense(400, input_dim=input_dim, kernel_initializer='he_normal', activation='relu'))
-            model.add(Dense(200, kernel_initializer='he_normal', activation='relu'))
+            model.add(Dropout(0.3))
+            model.add(Dense(200, kernel_initializer='he_normal', activation='relu',kernel_regularizer=regularizers.l2(0.01)))
+            model.add(Dropout(0.3))
+            model.add(Dense(100, kernel_initializer='he_normal', activation='relu', kernel_regularizer=regularizers.l2(0.01)))
+            model.add(Dropout(0.3))
+            model.add(Dense(50, kernel_initializer='he_normal', activation='relu', kernel_regularizer=regularizers.l2(0.01)))
             model.add(Dense(output_dim, activation=last_activation))
-            model.compile(loss=loss,optimizer=Adam(lr=0.001),metrics=metrics)
+            model.compile(loss=loss, optimizer=Adam(lr=0.01), metrics=metrics)
 
     # Train network
     csv_logger = CSVLogger(csv_logger_path)
@@ -211,23 +219,43 @@ def validate_network(network_path, validation_data, category, batch_size, mean, 
         print('F1 score no jump/jump: ' + str(fbeta_score(validation_labels, jump_pred, 1)))
 
 
-def test_network(network_path, test_data, category, batch_size, mean, std, prediction_file):
+def test_network(network_path, test_data, prediction_file, category, batch_size, mean, std, normalization = False):
+
+    # Transform test data
+    test_data = test_data.values
+
     # Load model
     model = load_model(network_path)
 
     # Generator for predictions
-    prediction_generator = get_testbatch(test_data, mean, std, batch_size=batch_size, category=category, normalization=True,
-                                         augmentation=False)
+    prediction_generator = get_testbatch(test_data, mean, std, batch_size=batch_size, category=category, normalization=normalization)
 
     # Predict labels for the test data
-    test_steps = int(np.ceil(float(len(test_data)) / float(batch_size)))
+    test_steps = int(np.ceil(float(test_data.shape[0]) / float(batch_size)))
     preds = model.predict_generator(prediction_generator, test_steps)
     preds = preds[:len(test_data)]
+
+    if(category == 'Regression'):
+        # Flatten list
+        predictions = []
+        for p in preds:
+            predictions.append(p[0])
+        preds = predictions
+    elif(category == "Change"):
+        # Get index from one-hot encoded test set as answer
+        predictions = []
+        for pred in preds:
+            predictions.append([1 if x == max(pred) else 0 for x in pred])
+        preds = np.array(predictions)
+        preds = [np.argmax(pred) for pred in preds]
+    elif(category == "Jump"):
+        # Decide predictions (under 0.5 is no_jump, over 0.5 is jump)
+        preds = (preds[:,0] > 0.5).astype(int)
 
     # Write predictions to file
     with open(prediction_file,"w") as file:
         for pred in preds:
-            file.write(pred + "\n")
+            file.write(str(pred) + "\n")
 
 if __name__ == "__main__":
     # Choose to either train, validate or test
@@ -237,10 +265,10 @@ if __name__ == "__main__":
 
     # Set important training parameters
     trainseries = '3000'
-    category = 'Jump'
+    category = 'Regression'
     dataset_type = 'Hard'
     batch_size = 64
-    epochs = 25
+    epochs = 50
     normalization = False
     augmentation = False
 
@@ -250,9 +278,9 @@ if __name__ == "__main__":
         balance_batches = True
 
     # Set this to the network file if you want to validate or test
-    #network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\NoNormalizationNoAugmentationSimple_model.17-0.56.hdf5"
-    #network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\DivisionNormalizationSimple_model.02-0.19.hdf5"
-    #network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\NormalizationSimple_model.03-0.35.hdf5"
+    epochAndloss = "34-2.23"
+    network_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Models\\NeuralNetwork\\" + category + "\\"+ trainseries + "_" + dataset_type + "_model." + epochAndloss + ".hdf5"
+
 
     if(train):
         # Set datafile
@@ -326,21 +354,24 @@ if __name__ == "__main__":
 
     if(test):
         # Set datafile
-        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".csv"
-        prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\NeuralNetwork\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
+        dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-True_Model-" + dataset_type + ".csv"
+        prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\NeuralNetwork\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-True_Model-" + dataset_type + ".txt"
 
         # Check if CSV already exists, else create csv from txt
         if (not (Path(dataset_file).is_file())):
-            dataset_txt = dataset_file.replace("csv", "txt")
-            dataset_reader = csv.reader(open(dataset_txt, "r"), delimiter=",")
-            dataset_csv = csv.writer(open(dataset_file, "w", newline=""))
-            dataset_csv.writerows(dataset_reader)
+            testset_txt = dataset_file.replace("csv", "txt")
+            with open(testset_txt, "r") as t:
+                testset_reader = csv.reader(t, delimiter=",")
+                with open(dataset_file, "w", newline="") as t:
+                    testset_csv = csv.writer(t)
+                    testset_csv.writerows(testset_reader)
 
         # Load data and transform to Panda dataframe (skip first two lines in train and first line in validation)
         test_data = pd.read_csv(dataset_file, header=None, skiprows=1)
 
         # Load normalization parameters if necessary
-        dataset = open(dataset_file.replace("Testsets\\TesttDataset","Datasets\\TrainDataset"))
+        dataset = open(dataset_file.replace("Testsets\\TestDataset","Datasets\\TrainDataset"))
+        line = dataset.readline()
         columns = line.split(":")[1].split(",")
         mean  = []
         std = []
@@ -352,4 +383,4 @@ if __name__ == "__main__":
         dataset.close()
 
         # Validate network with the data
-        test_network(network_path, test_data, category, batch_size, mean, std, prediction_file)
+        test_network(network_path, test_data, prediction_file, category, batch_size, mean, std, normalization=normalization)

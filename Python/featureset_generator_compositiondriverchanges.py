@@ -744,19 +744,6 @@ def generate_testset(testset_path, to_predict_path, connections_path, trainserie
                 else:
                     direction = -1
 
-                # Transform location as it is a categorical variable
-                if (location in locations_list):
-                    if (one_hot_encoding):
-                        location = transform_to_one_hot_encoding(locations_list, location, False)
-                    else:
-                        location = location_encoder.transform(np.array([location]))[0]
-                # If location in validatation/test set did not occur in train set, give either all zeros for one hot, or just -1
-                else:
-                    if (one_hot_encoding):
-                        location = [0] * len(locations_list)
-                    else:
-                        location = -1
-
                 future_delay = float(columns[8])
 
                 # Check time difference to decide if the delay 20 minutes ago should come from the same train number
