@@ -4,9 +4,9 @@ from sklearn.metrics import precision_score, recall_score, fbeta_score, mean_squ
 # Script to compare predictions from model and two baselines to the ground truth
 
 # Set which parameters you want to test
-trainseries = '3000'
-dataset_type = 'Hard'
-model = "NeuralNetwork"
+trainseries = '3000' # Choose a train series that have been made predictions for
+dataset_type = 'Hard' # Choose between 'Simple' (Basic model), 'Medium' (Composition/Driver model) or 'Hard' (Interacting Trains model)
+model = "NeuralNetwork" # Choose between 'XGBoost' or 'NeuralNetwork'
 
 # Set if one-hot encoding was true
 if(model == "XGBoost"):
