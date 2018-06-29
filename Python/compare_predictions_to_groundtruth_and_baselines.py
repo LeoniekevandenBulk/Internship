@@ -15,9 +15,9 @@ else:
     onehot = True
 
 # Set file paths
-prediction_file_Jump = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\" + model + "\\TestDataset" + trainseries + "_Category-Jump_Normalization-False_OneHotEncoding-" + str(onehot) + "_Model-" + dataset_type + ".txt"
-prediction_file_Change = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\" + model + "\\TestDataset" + trainseries + "_Category-Change_Normalization-False_OneHotEncoding-" + str(onehot) + "_Model-" + dataset_type + ".txt"
-prediction_file_Regression = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\" + model + "\\TestDataset" + trainseries + "_Category-Regression_Normalization-False_OneHotEncoding-" + str(onehot) + "_Model-" + dataset_type + ".txt"
+prediction_file_Jump = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\" + model + "\\Predictions" + trainseries + "_Category-Jump_Normalization-False_OneHotEncoding-" + str(onehot) + "_Model-" + dataset_type + ".txt"
+prediction_file_Change = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\" + model + "\\Predictions" + trainseries + "_Category-Change_Normalization-False_OneHotEncoding-" + str(onehot) + "_Model-" + dataset_type + ".txt"
+prediction_file_Regression = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\" + model + "\\Predictions" + trainseries + "_Category-Regression_Normalization-False_OneHotEncoding-" + str(onehot) + "_Model-" + dataset_type + ".txt"
 test_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-Jump_Normalization-False_OneHotEncoding-False_Model-Simple.txt"
 groundtruth_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Evaluation\\ANSWER_FORM.txt"
 baseline_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\JohnBrouwer\\Performance_JohnCode_complete.txt"

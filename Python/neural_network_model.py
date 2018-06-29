@@ -360,7 +360,7 @@ if __name__ == "__main__":
     if(test):
         # Set datafile
         dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-True_Model-" + dataset_type + ".csv"
-        prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\NeuralNetwork\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-True_Model-" + dataset_type + ".txt"
+        prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\NeuralNetwork\\Predictions" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-True_Model-" + dataset_type + ".txt"
 
         # Check if CSV already exists, else create csv from txt
         if (not (Path(dataset_file).is_file())):

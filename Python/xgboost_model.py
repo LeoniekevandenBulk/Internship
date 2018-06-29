@@ -430,7 +430,7 @@ if __name__== "__main__":
     # Set file paths
     dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
     testset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
-    prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\XGBoost\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".txt"
+    prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\XGBoost\\Predictions" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".txt"
 
     # Set the parameters for the model if you want to train
     params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.1, 'scale_pos_weight': 1}
