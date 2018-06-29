@@ -2,7 +2,7 @@
 
 # Open file to read from
 AnswerForm = open(
-    "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Evaluation\\ANSWER_FORM_LAYOUT.txt","r")
+    "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Evaluation\\ANSWER_FORM.txt","r")
 
 # Make file to write to
 TrainseriesFile = open(

@@ -14,7 +14,7 @@ reader1 = csv.reader(regular_trainnumers)
 regular_trainnumers_list = list(set(sum(list(reader1),[])))
 
 special_trainnumers = open(
-    "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\VariatieTreinseries.csv","r")
+    "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\VariatiesVanTreinseries.csv","r")
 reader2 = csv.reader(special_trainnumers)
 special_trainnumers_list = list(set(sum(list(reader2),[])))
 
