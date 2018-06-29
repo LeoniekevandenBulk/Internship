@@ -1,5 +1,7 @@
 import numpy as np
 
+# Script to create file that states the most common routes per train series
+
 # Open files to read from
 input_trainseries_file = open(
     "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\TrainseriesFromAnswerForm.txt","r")

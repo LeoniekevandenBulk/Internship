@@ -1,4 +1,4 @@
-This code is an adaptation of John Brouwers code (originally made for delay prediction) by Leonieke
+This Java code is an adaptation of John Brouwers code (originally made for delay prediction) by Leonieke
 van den Bulk in order to apply it to the data of the RAS competition.
 
 A small description of how to use this code is explained below:

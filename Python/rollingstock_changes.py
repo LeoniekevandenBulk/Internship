@@ -1,3 +1,6 @@
+# Script to adapt the RollingStockCompositionChanges file to two files, one which states when a train changes composition
+# and one that states what train numbers become other train numbers at what locations
+
 # Open files to read from
 CompChanges = open(
     "C:\\Users\\Leonieke.vandenB_nsp\\Programming\\Data_vertragingen\\Data_RAS\\RollingStockCompositionChanges.txt","r")

@@ -1,8 +1,10 @@
 import csv
 
+# Script to create file that states for each train series the locations it crosses
+
 # Open files to read from
 input_trainnumbers_csv = open(
-    "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\TrainnumbersForInput.csv","r")
+    "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\TrainseriesForInput.csv","r") # Set file containg all train series that are relevant, made using "trainseries_to_list.py"
 reader1 = csv.reader(input_trainnumbers_csv)
 input_trainnumbers = sum(list(reader1),[])
 input_trainnumbers_csv.close()

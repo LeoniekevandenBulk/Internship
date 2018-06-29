@@ -1,3 +1,5 @@
+# Create file with all train series relevant for the test set (last four tuesdays of the realization data)
+
 # Open file to read from
 AnswerForm = open(
     "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Evaluation\\ANSWER_FORM_LAYOUT.txt","r")

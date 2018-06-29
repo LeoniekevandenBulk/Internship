@@ -3,6 +3,8 @@ import Python.featureset_generator_compositiondriverchanges as medium
 import Python.featureset_generator_interactingtrains as hard
 from datetime import datetime
 
+# Functions to create feature sets from realization data and all supporting data
+
 def create_train_and_validation_set():
     startTime = datetime.now()
 
@@ -11,7 +13,7 @@ def create_train_and_validation_set():
     categories = ['Jump', 'Change', 'Regression']
     normalization = [False]
     one_hot_encoding = [False,True]
-    parameters =  [(normalization[0],one_hot_encoding[0])] #[(normalization[0],one_hot_encoding[0]),(normalization[0],one_hot_encoding[1])]
+    parameters =  [(normalization[0],one_hot_encoding[0]),(normalization[0],one_hot_encoding[1])]
     realisation_path = "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RealisationData\\RealisationDataWithoutValidation.txt"
     validation_path = "C:\\Users\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RealisationData\\Validationdata.txt"
     connections_path = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Data_vertragingen\\Data_RAS\\RollingStockConnectionsAll.txt"
@@ -108,7 +110,7 @@ def create_test_set():
 
     print(datetime.now() - startTime)
 
-
+# MAIN
 if __name__ == "__main__":
     create_train_and_validation_set()
     #create_test_set()

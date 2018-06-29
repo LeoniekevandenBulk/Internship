@@ -1,3 +1,4 @@
+#Import libraries
 from pathlib import Path
 import csv
 import math
@@ -12,6 +13,9 @@ from sklearn.metrics import fbeta_score, mean_squared_error, accuracy_score, pre
 from Python.batch_generator import get_databatch, get_valbatch, get_databatch2, get_valbatch2, get_testbatch
 from matplotlib import pyplot
 
+# Functions needed to train, validate and test the neural network model
+
+# Function to train the neural network model
 def train_network(train_data, validation_data, category, dataset_type, trainseries, batch_size, epochs, dataset_file, mean, std,
                   normalization=True, augmentation=True, balance_batches=True):
 
@@ -134,6 +138,7 @@ def train_network(train_data, validation_data, category, dataset_type, trainseri
     pyplot.legend(['train', 'test'], loc='upper left')
     pyplot.savefig(save_figure_path + "-Loss.png")
 
+# Function to validate an existing network on the validation data
 def validate_network(network_path, validation_data, category, batch_size, mean, std):
 
     validation_data = validation_data.values
@@ -218,7 +223,7 @@ def validate_network(network_path, validation_data, category, batch_size, mean, 
         # Print f1 scores
         print('F1 score no jump/jump: ' + str(fbeta_score(validation_labels, jump_pred, 1)))
 
-
+# Function to test an existing network on the test data
 def test_network(network_path, test_data, prediction_file, category, batch_size, mean, std, normalization = False):
 
     # Transform test data
@@ -257,21 +262,25 @@ def test_network(network_path, test_data, prediction_file, category, batch_size,
         for pred in preds:
             file.write(str(pred) + "\n")
 
+# MAIN
 if __name__ == "__main__":
-    # Choose to either train, validate or test
+    # Choose to either train, validate or test with the neural network
     train = True
     validate = False
     test = False
 
+    # Set on which feature set you want to train
+    trainseries = '3000' # Choose a train series that have been made feature sets for
+    category = 'Regression' # Choose between 'Jump', 'Change' or 'Regression'
+    dataset_type = 'Hard' # Choose between 'Simple' (Basic model), 'Medium' (Composition/Driver model) or 'Hard' (Interacting Trains model)
+
     # Set important training parameters
-    trainseries = '3000'
-    category = 'Regression'
-    dataset_type = 'Hard'
     batch_size = 64
     epochs = 50
     normalization = False
     augmentation = False
 
+    # Only balance batches with a categorical feature set
     if(category=='Regression'):
         balance_batches = False
     else:
@@ -302,8 +311,6 @@ if __name__ == "__main__":
         validation_data = pd.read_csv(dataset_file.replace("TrainDataset","ValidationDataset"), header=None, skiprows=1)
 
         # Load normalization parameters if necessary
-        #normalization_dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-True_OneHotEncoding-True_Model-" + dataset_type + ".txt"
-        #dataset = open(normalization_dataset_file)
         dataset = open(dataset_file)
         line = dataset.readline()
         columns = line.split(":")[1].split(",")
@@ -315,8 +322,6 @@ if __name__ == "__main__":
             else:
                 std.append(float(param))
         dataset.close()
-
-        ####################
 
         # Train network with the data
         train_network(train_data, validation_data, category, dataset_type, trainseries, batch_size, epochs, dataset_file, mean, std,

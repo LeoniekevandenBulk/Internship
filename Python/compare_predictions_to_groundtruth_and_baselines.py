@@ -1,6 +1,8 @@
 import math
 from sklearn.metrics import precision_score, recall_score, fbeta_score, mean_squared_error
 
+# Script to compare predictions from model and two baselines to the ground truth
+
 # Set which parameters you want to test
 trainseries = '3000'
 dataset_type = 'Hard'

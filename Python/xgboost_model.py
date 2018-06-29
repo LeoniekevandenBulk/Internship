@@ -1,4 +1,4 @@
-#Import libraries:
+#Import libraries
 import csv
 import math
 import time
@@ -12,6 +12,8 @@ from sklearn.preprocessing import OneHotEncoder
 from scipy.sparse import csr_matrix
 from matplotlib import pyplot
 import pickle
+
+# Functions needed to make, train and test the XGBoost model
 
 # Function to find the best XGB parameters on a dataset by testing multiple sets of parameters, picking the best set and outputting performance of this set
 def find_parameters_XGB(dataset_file, category, categorical_labels, one_hot_encoding=True, sparse=True):
@@ -412,20 +414,26 @@ def test_XGB(model_path, testset_file, prediction_file, categorical_labels, one_
         for pred in predictions:
             file.write(str(pred) + "\n")
 
-
+# MAIN
 if __name__== "__main__":
+    # Choose to either find the best parameters, train or test with the XGBoost model
     find_parameters = True
     train = False
     test = False
 
-    # Set important training parameters
-    trainseries = '3000'
-    category = 'Regression'
-    dataset_type = 'Hard'
+    # Set on which feature set you want to train
+    trainseries = '3000' # Choose a train series that have been made feature sets for
+    category = 'Regression' # Choose between 'Jump', 'Change' or 'Regression'
+    dataset_type = 'Hard' # Choose between 'Simple' (Basic model), 'Medium' (Composition/Driver model) or 'Hard' (Interacting Trains model)
     categorical_labels = ["Day", "Location"]
+
+    # Set file paths
     dataset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Datasets\\TrainDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
     testset_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Testsets\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".csv"
     prediction_file = "C:\\Users\\Leonieke.vandenB_nsp\\OneDrive - NS\\Predictions\\XGBoost\\TestDataset" + trainseries + "_Category-" + category + "_Normalization-False_OneHotEncoding-False_Model-" + dataset_type + ".txt"
+
+    # Set the parameters for the model if you want to train
+    params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.1, 'scale_pos_weight': 1}
 
     # Set this if you want to test with an existing XGB model
     MSE = 2.110665998263116
@@ -460,8 +468,7 @@ if __name__== "__main__":
                 open(dataset_file.replace("TrainDataset", "ValidationDataset"), "w", newline=""))
             validation_csv.writerows(validation_reader)
 
-        # Apply parameters below to dataset
-        params = {'gamma': 0, 'learning_rate': 0.1, 'max_depth': 7, 'min_child_weight': 3, 'reg_alpha': 0.1, 'scale_pos_weight': 1}
+        # Apply parameters to dataset
         train_XGB(dataset_file, category, categorical_labels, params, one_hot_encoding=False, sparse=False, save_figures=True)
 
     if(test):

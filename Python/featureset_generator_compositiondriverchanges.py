@@ -3,6 +3,8 @@ import numpy as np
 from collections import defaultdict
 from sklearn import preprocessing
 
+# Functions to create the Composition/Driver feature set used by "create_featuresets.py"
+
 # Create function for one hot encoding of categorical variables
 def transform_to_one_hot_encoding(category_list, category, drop_column=False):
     if(drop_column):
@@ -79,7 +81,7 @@ def list_trainseries_locations(trainseries, trainseries_locations_path):
     return locations
 
 
-# Generate feature set to train on from realisation data
+# Generate feature set to train on or validate on from realisation data
 def generate_featureset(realisation_path, connections_path, trainseries_locations_path, composition_change_path,
                             driver_change_path, route_path, trainseries, category, validation=False, normalization=True,
                             one_hot_encoding=False):

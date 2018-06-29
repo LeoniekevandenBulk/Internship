@@ -1,6 +1,8 @@
 import numpy as np
 import random
 
+# Batch generator functions for the neural network
+
 def get_databatch(data, mean, std, batch_size=32, category='Regression', shuffle=True, normalization=True, augmentation=True, balance_batches=False):
     # Set label length for category
     if(category=='Change'):
